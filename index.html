@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sourcery US</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+:root{
+  --bg:#EBEEF2; --panel:#FFFFFF; --panel-2:#F5F7F9; --ink:#18202C; --muted:#5A6577; --line:#D3D9E1; --line-2:#E4E8ED;
+  --accent:#4338C9; --accent-soft:#E8E6FB; --on-accent:#FFFFFF;
+  --band:#1C2840; --band-ink:#F2F5FA; --band-line:rgba(255,255,255,.07);
+  --and:#2160C4; --or:#23803A; --not:#C0342D; --phrase:#9A5208;
+  --ok:#23803A; --warn:#A86A00; --err:#C0342D;
+  --sans:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#10151D; --panel:#18202B; --panel-2:#1E2734; --ink:#E7ECF3; --muted:#9AA6B6; --line:#2E3949; --line-2:#253041;
+    --accent:#A49CFF; --accent-soft:#2A2752; --on-accent:#14112E;
+    --band:#0B1220; --band-ink:#E7ECF3; --band-line:rgba(255,255,255,.06);
+    --and:#7FAEFF; --or:#6DCB82; --not:#FF7D73; --phrase:#F2A84E;
+    --ok:#6DCB82; --warn:#F2B84E; --err:#FF7D73; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10151D; --panel:#18202B; --panel-2:#1E2734; --ink:#E7ECF3; --muted:#9AA6B6; --line:#2E3949; --line-2:#253041;
+  --accent:#A49CFF; --accent-soft:#2A2752; --on-accent:#14112E;
+  --band:#0B1220; --band-ink:#E7ECF3; --band-line:rgba(255,255,255,.06);
+  --and:#7FAEFF; --or:#6DCB82; --not:#FF7D73; --phrase:#F2A84E;
+  --ok:#6DCB82; --warn:#F2B84E; --err:#FF7D73; color-scheme:dark;
+}
+body[data-mode="trades"]{ --accent:#E9A800; --accent-soft:rgba(233,168,0,.16); --on-accent:#17140A; }
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px); -webkit-text-size-adjust:100%}
+body{margin:0; background:var(--bg); color:var(--ink); font:400 15px/1.5 var(--sans); min-height:100%}
+button,input,select,textarea{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+a{color:var(--accent)}
+h1,h2,h3,h4{margin:0; line-height:1.2}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* Header band: the one loud element. Blueprint grid for tech, hi-vis with hazard edge for trades */
+.band{position:relative; background-color:var(--band); color:var(--band-ink);
+  background-image:linear-gradient(var(--band-line) 1px,transparent 1px),linear-gradient(90deg,var(--band-line) 1px,transparent 1px);
+  background-size:22px 22px; padding:18px clamp(14px,3vw,32px) 20px;}
+body[data-mode="trades"] .band{background-color:#F2B300; background-image:none; color:#17140A}
+body[data-mode="trades"] .band::after{content:""; position:absolute; left:0; right:0; bottom:0; height:9px;
+  background:repeating-linear-gradient(-45deg,#17140A 0 11px,#F2B300 11px 22px)}
+.band-inner{max-width:1360px; margin:0 auto; display:flex; flex-wrap:wrap; align-items:center; gap:14px 24px}
+.brand{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-right:auto}
+.brand h1{font-weight:800; font-size:clamp(24px,3.2vw,32px); letter-spacing:-.02em}
+.brand h1 .us{font-weight:400; opacity:.75}
+.brand p{margin:0; font-size:14px; opacity:.8}
+.modeswitch{display:inline-flex; border:1.5px solid currentColor; border-radius:999px; padding:3px; gap:2px}
+.modeswitch button{border:0; background:transparent; padding:7px 16px; border-radius:999px; cursor:pointer; font-weight:600; font-size:14px; color:inherit}
+.modeswitch button[aria-checked="true"]{background:var(--band-ink); color:var(--band)}
+body[data-mode="trades"] .modeswitch button[aria-checked="true"]{background:#17140A; color:#F2B300}
+.theme-btn{border:1.5px solid currentColor; background:transparent; border-radius:999px; padding:6px 12px; cursor:pointer; font-size:13px; font-weight:600}
+.modelabel{font-size:13px; font-weight:600; opacity:.85}
+
+/* Tabs */
+.tabs{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:var(--panel); border-bottom:1px solid var(--line)}
+.tabs-inner{max-width:1360px; margin:0 auto; display:flex; gap:2px; overflow-x:auto; padding:0 clamp(8px,2.4vw,26px); scrollbar-width:none}
+.tabs-inner::-webkit-scrollbar{display:none}
+.tab-btn{flex:none; border:0; background:none; padding:13px 14px 11px; cursor:pointer; color:var(--muted); font-weight:600; font-size:14px; border-bottom:3px solid transparent; white-space:nowrap}
+.tab-btn[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent)}
+.tab-btn .count{display:inline-block; min-width:20px; margin-left:4px; padding:0 6px; border-radius:999px; background:var(--panel-2); font-size:12px; color:var(--muted)}
+
+main{max-width:1360px; margin:0 auto; padding:20px clamp(10px,2.4vw,26px) 60px}
+.tab{display:none}
+.tab.active{display:block}
+.lede{color:var(--muted); margin:0 0 16px; max-width:72ch}
+
+/* Panes */
+.pane{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; min-width:0}
+.pane + .pane{margin-top:14px}
+.pane-head{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px}
+.pane-head h2{font-size:17px; font-weight:700}
+.pane-head h3{font-size:15px; font-weight:700}
+details.pane > summary{cursor:pointer; font-weight:700; font-size:17px; list-style:none; display:flex; justify-content:space-between; align-items:center}
+details.pane > summary::-webkit-details-marker{display:none}
+details.pane > summary::after{content:"Show"; font-size:13px; font-weight:600; color:var(--muted)}
+details.pane[open] > summary::after{content:"Hide"}
+details.pane[open] > summary{margin-bottom:12px}
+.grid-2{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:16px; align-items:start}
+.grid-even{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; align-items:start}
+@media (max-width:920px){ .grid-2,.grid-even{grid-template-columns:minmax(0,1fr)} }
+.hint{color:var(--muted); font-size:13px}
+.row{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.row.spread{justify-content:space-between}
+.stack > * + *{margin-top:10px}
+
+/* Controls */
+.btn{display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:var(--panel); padding:7px 12px; border-radius:7px; cursor:pointer; font-weight:600; font-size:14px; line-height:1.2; white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--on-accent)}
+.btn.small{padding:4px 9px; font-size:13px}
+.btn.ghost{border-color:transparent; background:transparent}
+.btn.danger{color:var(--err)}
+.btn[disabled]{opacity:.5; cursor:not-allowed}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden}
+.seg button{border:0; background:var(--panel); padding:6px 12px; cursor:pointer; font-weight:600; font-size:13px; color:var(--muted)}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--on-accent)}
+label.f{display:block; font-size:13px; font-weight:600; color:var(--muted)}
+label.f > span.req{color:var(--err)}
+.in, select.in, textarea.in{display:block; width:100%; margin-top:4px; border:1px solid var(--line); background:var(--panel-2); border-radius:7px; padding:8px 10px; font-size:14px; font-weight:400; color:var(--ink)}
+textarea.in{resize:vertical; min-height:90px; line-height:1.45}
+textarea.jd{min-height:300px; font-size:14px}
+.fields{display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px}
+.fields .wide{grid-column:1 / -1}
+fieldset.fs{border:0; padding:0; margin:0}
+fieldset.fs legend{font-size:13px; font-weight:700; padding:0; margin-bottom:6px}
+.fs-group + .fs-group{margin-top:16px; padding-top:14px; border-top:1px solid var(--line-2)}
+.checks{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:14px}
+.checks label{display:inline-flex; gap:6px; align-items:center; cursor:pointer}
+.note{font-size:13px; color:var(--muted); border-left:3px solid var(--accent); padding:6px 10px; background:var(--panel-2); border-radius:0 6px 6px 0; margin:8px 0 0}
+
+/* Chips */
+.group{padding:10px 0; border-top:1px solid var(--line-2)}
+.group:first-of-type{border-top:0; padding-top:2px}
+.group-head{display:flex; justify-content:space-between; gap:10px; align-items:baseline; margin-bottom:7px}
+.group-head b{font-size:14px}
+.chips{display:flex; flex-wrap:wrap; gap:6px; align-items:center}
+.chip{display:inline-flex; align-items:stretch; border-radius:999px; border:1.5px solid var(--accent); background:var(--accent-soft); font-size:13.5px; overflow:hidden}
+.chip button{border:0; background:transparent; cursor:pointer; color:var(--ink)}
+.chip .ct{padding:4px 4px 4px 11px; font-weight:600}
+.chip .ct small{font-weight:500; color:var(--muted); margin-left:3px}
+.chip .ce{padding:4px 10px 4px 5px; color:var(--muted); font-weight:700; letter-spacing:.05em}
+.chip.off{border-style:dashed; border-color:var(--line); background:transparent}
+.chip.off .ct{text-decoration:line-through; color:var(--muted); font-weight:500}
+.chip.ex{border-color:var(--not)}
+.group[data-g="exclude"] .chip.on{background:color-mix(in srgb,var(--not) 12%,transparent)}
+.addterm{border:1px dashed var(--line); background:transparent; border-radius:999px; padding:4px 11px; font-size:13px; width:170px; color:var(--ink)}
+.editor{margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; background:var(--panel-2); padding:8px; border-radius:8px}
+.editor input{flex:1 1 240px}
+.levels{display:flex; flex-wrap:wrap; gap:6px}
+.lvl{border:1.5px solid var(--line); background:transparent; border-radius:6px; padding:4px 10px; cursor:pointer; font-size:13px; font-weight:600; color:var(--muted)}
+.lvl[aria-pressed="true"]{border-color:var(--accent); color:var(--ink); background:var(--accent-soft)}
+.empty{color:var(--muted); font-size:13px; font-style:italic}
+
+/* Strings */
+.legend{display:flex; flex-wrap:wrap; gap:12px; font-size:12.5px; color:var(--muted); align-items:center}
+.legend span b{font-family:var(--mono); font-weight:500}
+.out{border:1px solid var(--line); border-radius:10px; background:var(--panel); padding:12px 14px}
+.out + .out{margin-top:10px}
+.out-head{display:flex; justify-content:space-between; gap:8px; align-items:center; flex-wrap:wrap}
+.out-head h3{font-size:15px; font-weight:700}
+.part{margin-top:10px}
+.part-label{display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:4px}
+pre.str{margin:0; white-space:pre-wrap; word-break:break-word; font:13px/1.6 var(--mono); background:var(--panel-2); border:1px solid var(--line-2); border-radius:7px; padding:9px 11px; max-height:260px; overflow:auto}
+pre.str.prose{font-family:var(--sans); font-size:14px}
+.k-and{color:var(--and); font-weight:600}
+.k-or{color:var(--or); font-weight:600}
+.k-not,.k-neg{color:var(--not); font-weight:600}
+.k-ph{color:var(--phrase)}
+.k-field{color:var(--accent); font-weight:500}
+body[data-mode="trades"] .k-field{color:var(--muted)}
+.k-par{color:var(--muted)}
+.k-bad{background:color-mix(in srgb,var(--err) 22%,transparent); border-radius:3px}
+.meter{font-size:12px; color:var(--muted); font-family:var(--mono)}
+.meter.over{color:var(--err)}
+ul.notes{margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted)}
+ul.notes li + li{margin-top:2px}
+.badge{display:inline-block; font-size:11.5px; font-weight:700; padding:2px 7px; border-radius:5px; background:var(--panel-2); color:var(--muted); border:1px solid var(--line-2)}
+
+/* Issues */
+.issue{display:grid; grid-template-columns:12px 1fr; gap:10px; padding:9px 0; border-top:1px solid var(--line-2)}
+.issue:first-child{border-top:0}
+.dot{width:10px; height:10px; border-radius:50%; margin-top:5px}
+.dot.err{background:var(--err)} .dot.warn{background:var(--warn)} .dot.ok{background:var(--ok)} .dot.info{background:var(--muted)}
+.issue b{font-size:14px}
+.issue p{margin:2px 0 0; font-size:13.5px; color:var(--muted)}
+.score{font-size:40px; font-weight:800; letter-spacing:-.03em; line-height:1}
+
+/* AI output */
+.ai-out{font-size:14.5px; line-height:1.55}
+.ai-out h4{font-size:15px; margin:14px 0 6px}
+.ai-out h4:first-child{margin-top:0}
+.ai-out p{margin:6px 0}
+.ai-out ul,.ai-out ol{margin:6px 0; padding-left:20px}
+.ai-out li + li{margin-top:3px}
+.ai-out code{font-family:var(--mono); font-size:13px; background:var(--panel-2); padding:1px 4px; border-radius:4px}
+.tool{display:block; width:100%; text-align:left; border:1px solid var(--line); background:var(--panel); padding:10px 12px; border-radius:8px; cursor:pointer}
+.tool + .tool{margin-top:6px}
+.tool b{display:block; font-size:14px}
+.tool span{display:block; font-size:12.5px; color:var(--muted); margin-top:1px}
+.tool[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft)}
+.spin{display:inline-block; width:12px; height:12px; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:sp .8s linear infinite; vertical-align:-1px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+.sugg{display:flex; gap:10px; justify-content:space-between; align-items:flex-start; padding:9px 0; border-top:1px solid var(--line-2)}
+.sugg:first-child{border-top:0}
+.sugg p{margin:0; font-size:14px}
+.sugg small{display:block; color:var(--muted); font-size:12.5px}
+
+/* Compare + saved */
+table.cmp{width:100%; border-collapse:collapse; font-size:13.5px}
+table.cmp th,table.cmp td{text-align:left; vertical-align:top; padding:8px; border-top:1px solid var(--line-2)}
+table.cmp th{font-size:12.5px; color:var(--muted); font-weight:700}
+table.cmp td .chips{gap:4px}
+.mini{display:inline-block; padding:2px 8px; border-radius:999px; font-size:12.5px; border:1px solid var(--line); margin:2px 2px 0 0}
+.mini.a{border-color:var(--and); color:var(--and)} .mini.b{border-color:var(--phrase); color:var(--phrase)}
+.scroll-x{overflow-x:auto}
+.saved{border:1px solid var(--line); border-radius:10px; padding:12px 14px; background:var(--panel)}
+.saved + .saved{margin-top:10px}
+.saved-top{display:flex; flex-wrap:wrap; gap:8px 12px; align-items:center; justify-content:space-between}
+.saved-name{font-weight:700; font-size:15px}
+.status{font-size:12px; font-weight:700; padding:3px 9px; border-radius:999px; border:1px solid currentColor}
+.st-draft{color:var(--muted)} .st-review{color:var(--and)} .st-approved{color:var(--ok)} .st-changes{color:var(--warn)}
+.cmts{margin-top:10px; border-top:1px solid var(--line-2); padding-top:8px}
+.cmt{font-size:13.5px; padding:5px 0}
+.cmt .who{font-weight:700} .cmt .when{color:var(--muted); font-size:12px; margin-left:6px}
+.toast{position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:9px 16px; border-radius:8px; font-size:14px; font-weight:600; z-index:50; opacity:0; pointer-events:none; transition:opacity .2s}
+.toast.show{opacity:1}
+.bulk-card{border:1px solid var(--line); border-radius:10px; padding:12px 14px; background:var(--panel)}
+.bulk-card + .bulk-card{margin-top:10px}
+</style>
+</head>
+<body data-mode="tech">
+<header class="band">
+  <div class="band-inner">
+    <div class="brand">
+      <h1>Sourcery <span class="us">US</span></h1>
+      <p>Sourcing workbench for US recruiters</p>
+    </div>
+    <span class="modelabel">Role type</span>
+    <div class="modeswitch" role="radiogroup" aria-label="Role type">
+      <button type="button" role="radio" aria-checked="true" data-mode="tech">Tech</button>
+      <button type="button" role="radio" aria-checked="false" data-mode="trades">Skilled trades</button>
+    </div>
+    <button type="button" class="theme-btn" id="themeBtn" title="Switch between system, light and dark">Theme: System</button>
+  </div>
+</header>
+<nav class="tabs" aria-label="Sections"><div class="tabs-inner" role="tablist" id="tablist">
+  <button class="tab-btn" role="tab" aria-selected="true" data-tab="build">Build</button>
+  <button class="tab-btn" role="tab" aria-selected="false" data-tab="intake">HM intake</button>
+  <button class="tab-btn" role="tab" aria-selected="false" data-tab="bulk">Bulk</button>
+  <button class="tab-btn" role="tab" aria-selected="false" data-tab="check">Check a string</button>
+  <button class="tab-btn" role="tab" aria-selected="false" data-tab="kit">Recruiter kit</button>
+  <button class="tab-btn" role="tab" aria-selected="false" data-tab="compare">Compare JDs</button>
+  <button class="tab-btn" role="tab" aria-selected="false" data-tab="saved">Saved searches <span class="count" id="savedCount">0</span></button>
+</div></nav>
+
+<main>
+<section class="tab active" id="tab-build" role="tabpanel">
+  <div class="grid-2">
+    <div>
+      <div class="pane">
+        <div class="pane-head"><h2>Job description</h2>
+          <div class="row"><button class="btn small" id="btnExample" type="button">Example JD</button>
+            <label class="btn small">Upload PDF, Word or text<input type="file" id="jdFile" accept=".pdf,.docx,.txt,.md,.doc" hidden></label></div></div>
+        <textarea class="in jd" id="jd" placeholder="Paste the job description here, upload a file, or load the example."></textarea>
+        <div class="row spread" style="margin-top:10px"><button class="btn primary" id="btnExtract" type="button">Extract terms</button><span class="hint" id="jdStatus"></span></div>
+      </div>
+      <details class="pane" id="detailsPane" open><summary>Role details</summary><div id="detailsForm"></div></details>
+    </div>
+    <div>
+      <div class="pane" id="termsPane">
+        <div class="pane-head"><h2>Search terms</h2>
+          <div class="row">
+            <div class="seg" id="strictSeg"><button type="button" data-v="1" aria-pressed="true">Strict</button><button type="button" data-v="0" aria-pressed="false">Broad</button></div>
+            <button class="btn small" id="btnSave" type="button">Save search</button>
+          </div></div>
+        <p class="hint" id="strictHint" style="margin:0 0 10px"></p>
+        <div class="group" data-g="levels"><div class="group-head"><b>Level</b><span class="hint">Level words are required in Strict and ignored in Broad</span></div><div class="levels" id="levels"></div></div>
+        <div id="groups"></div>
+      </div>
+      <div style="margin:14px 0 8px" class="row spread"><h2 style="font-size:17px">Search strings</h2>
+        <div class="legend"><span><b class="k-and">AND</b></span><span><b class="k-or">OR</b></span><span><b class="k-not">NOT</b></span><span><b class="k-ph">"phrase"</b></span></div></div>
+      <div id="outputs"></div>
+      <div class="pane" id="tunePane" style="margin-top:14px">
+        <div class="pane-head"><h2>Tune the pool</h2></div>
+        <div class="fields">
+          <label class="f">Results the search returned<input class="in" type="number" min="0" id="tuneN" placeholder="e.g. 1200"></label>
+          <label class="f">Platform<select class="in" id="tunePlat"></select></label>
+          <label class="f">Target from<input class="in" type="number" min="0" id="tuneMin" value="150"></label>
+          <label class="f">Target to<input class="in" type="number" min="0" id="tuneMax" value="400"></label>
+        </div>
+        <div class="row" style="margin-top:10px"><button class="btn primary" id="btnTune" type="button">Suggest changes</button><span class="hint">Suggestions use the chips and radius currently set above.</span></div>
+        <div id="tuneOut" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="tab" id="tab-intake" role="tabpanel">
+  <p class="lede">A hiring manager can fill this in directly. Nothing here asks for current pay or salary history, because asking is illegal in many US states. Fill in the form, then build the search from it.</p>
+  <div class="pane"><div id="intakeForm"></div>
+    <div class="row" style="margin-top:14px"><button class="btn primary" id="btnIntakeBuild" type="button">Build search from intake</button><button class="btn" id="btnIntakeSave" type="button">Save as search (In review)</button><button class="btn" id="btnIntakeCopy" type="button">Copy intake summary</button><span class="hint" id="intakeStatus"></span></div>
+  </div>
+</section>
+
+<section class="tab" id="tab-bulk" role="tabpanel">
+  <p class="lede">Paste up to 10 job descriptions, separated by a line containing only <code>---</code>. Each one gets its own search. Role type is detected per JD.</p>
+  <div class="pane">
+    <textarea class="in jd" id="bulkText" placeholder="JD one...&#10;---&#10;JD two..."></textarea>
+    <div class="row" style="margin-top:10px"><button class="btn primary" id="btnBulk" type="button">Generate searches</button><button class="btn" id="btnBulkExample" type="button">Load two examples</button><span class="hint" id="bulkStatus"></span></div>
+  </div>
+  <div id="bulkOut" style="margin-top:14px"></div>
+</section>
+
+<section class="tab" id="tab-check" role="tabpanel">
+  <p class="lede">Paste any Boolean string and pick where you will run it. The checker looks at brackets, quotes, operators and what that platform actually supports.</p>
+  <div class="grid-even">
+    <div class="pane">
+      <label class="f">Boolean string<textarea class="in" id="chkText" style="font-family:var(--mono);font-size:13px;min-height:140px" placeholder='("Journeyman Electrician" OR "Electrician") AND ("conduit" OR "EMT") NOT recruiter'></textarea></label>
+      <div class="fields" style="margin-top:10px">
+        <label class="f">Platform<select class="in" id="chkPlat">
+          <option value="lir">LinkedIn Recruiter</option><option value="lif">LinkedIn (free)</option><option value="google">Google X-ray</option><option value="dice">Dice</option><option value="indeed">Indeed Resume</option><option value="zip">ZipRecruiter</option><option value="ai">AI sourcing tool (Juicebox etc.)</option></select></label>
+      </div>
+      <div class="row" style="margin-top:10px"><button class="btn primary" id="btnCheck" type="button">Check string</button><button class="btn" id="btnFix" type="button">Apply safe fixes</button><button class="btn" id="btnChkCopy" type="button">Copy</button></div>
+      <div class="part" style="margin-top:12px"><div class="part-label">Highlighted</div><pre class="str" id="chkHL"></pre></div>
+    </div>
+    <div class="pane"><div class="pane-head"><h2>Findings</h2><span class="meter" id="chkMeter"></span></div><div id="chkOut"><p class="empty">Nothing checked yet.</p></div></div>
+  </div>
+</section>
+
+<section class="tab" id="tab-kit" role="tabpanel">
+  <p class="lede">Every tool works from the terms and role details on the Build tab. Outputs are drafts for you to edit. <span id="kitAvail"></span></p>
+  <div class="grid-2">
+    <div>
+      <div class="pane"><div class="pane-head"><h2>Tools</h2></div><div id="toolList"></div></div>
+      <div class="pane"><div class="pane-head"><h3>Working from</h3></div><div id="kitCtx" class="hint"></div></div>
+    </div>
+    <div class="pane"><div class="pane-head"><h2 id="kitTitle">Output</h2><div class="row"><button class="btn small" id="kitStop" type="button" hidden>Stop</button><button class="btn small" id="kitCopy" type="button" hidden>Copy</button></div></div>
+      <div id="kitNote" class="note" hidden></div>
+      <div id="kitOut" class="ai-out"><p class="empty">Pick a tool on the left.</p></div></div>
+  </div>
+</section>
+
+<section class="tab" id="tab-compare" role="tabpanel">
+  <p class="lede">Paste two versions of a JD to see what changed in titles, skills, pay, level and language.</p>
+  <div class="grid-even">
+    <div class="pane"><div class="pane-head"><h3>Version A</h3><button class="btn small" id="cmpExA" type="button">Load example</button></div><textarea class="in jd" id="cmpA" style="min-height:220px"></textarea></div>
+    <div class="pane"><div class="pane-head"><h3>Version B</h3><button class="btn small" id="cmpExB" type="button">Load edited example</button></div><textarea class="in jd" id="cmpB" style="min-height:220px"></textarea></div>
+  </div>
+  <div class="row" style="margin:12px 0"><button class="btn primary" id="btnCompare" type="button">Compare</button></div>
+  <div id="cmpOut"></div>
+</section>
+
+<section class="tab" id="tab-saved" role="tabpanel">
+  <p class="lede" id="savedLede">Saved searches live with this page: anyone you share it with sees the same list, can comment, and can load a search into Build.</p>
+  <div class="row spread" style="margin-bottom:12px">
+    <div class="row"><label class="f" style="display:inline-flex;align-items:center;gap:6px">Show<select class="in" id="savedFilter" style="margin:0;width:auto"><option value="">All statuses</option><option>Draft</option><option>In review</option><option>Approved</option><option>Changes requested</option></select></label></div>
+    <button class="btn primary" id="btnSave2" type="button">Save current search</button>
+  </div>
+  <div id="savedList"></div>
+</section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+/* ===================== Data ===================== */
+const STATES={AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",DE:"Delaware",DC:"District of Columbia",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming"};
+const STATE_BY_NAME=Object.fromEntries(Object.entries(STATES).map(([a,n])=>[n.toLowerCase(),a]));
+function stAbbr(s){ s=(s||'').trim(); if(!s) return ''; if(STATES[s.toUpperCase()]) return s.toUpperCase(); return STATE_BY_NAME[s.toLowerCase()]||''; }
+function parseStates(s){ return uniq((s||'').split(/[,;\s]+/).map(stAbbr).filter(Boolean)); }
+
+const LEVELS={
+ tech:{Junior:["Junior","Jr","Associate","Entry Level"],Mid:["Mid-Level","Intermediate"],Senior:["Senior","Sr"],Staff:["Staff"],Principal:["Principal"],Manager:["Manager","Engineering Manager","Head of"]},
+ trades:{Apprentice:["Apprentice","Helper","Trainee"],Journeyman:["Journeyman","Journeyperson","Journey Level"],Master:["Master"],Foreman:["Foreman","Lead","Crew Lead"],Superintendent:["Superintendent","Field Superintendent"],"Project Manager":["Project Manager"]}
+};
+const T=(t,syn,o)=>Object.assign({t,syn:syn||[]},o||{});
+const TITLES={
+ tech:[T("Software Engineer",["Software Developer","SWE","Software Development Engineer"]),T("Backend Engineer",["Back End Engineer","Back-End Engineer","Backend Developer","Server Engineer"]),T("Frontend Engineer",["Front End Engineer","Front-End Engineer","Frontend Developer","UI Engineer"]),T("Full Stack Engineer",["Full-Stack Engineer","Fullstack Engineer","Full Stack Developer"]),T("Data Engineer",["Analytics Engineer","ETL Developer"]),T("Data Scientist",["Applied Scientist","Research Scientist"]),T("Machine Learning Engineer",["ML Engineer","AI Engineer","Applied ML Engineer"]),T("DevOps Engineer",["Site Reliability Engineer","SRE","Platform Engineer","Infrastructure Engineer","Cloud Engineer"]),T("Mobile Engineer",["iOS Engineer","Android Engineer","Mobile Developer","iOS Developer","Android Developer"]),T("Security Engineer",["Application Security Engineer","AppSec Engineer","Cloud Security Engineer"]),T("QA Engineer",["SDET","Test Engineer","Quality Engineer","Automation Engineer"]),T("Product Manager",["Technical Product Manager","Product Owner"]),T("Product Designer",["UX Designer","UI/UX Designer","Interaction Designer"]),T("Engineering Manager",["Software Engineering Manager","Head of Engineering"]),T("Solutions Engineer",["Sales Engineer","Solutions Architect","Pre-Sales Engineer"]),T("Account Executive",["Account Manager","Sales Executive"]),T("Customer Success Manager",["Customer Success","CSM"]),T("Data Analyst",["Business Analyst","Analytics Analyst"]),T("Recruiter",["Technical Recruiter","Talent Partner"])],
+ trades:[T("Journeyman Electrician",["Journeyman Wireman","JW Electrician","Journey Level Electrician","Licensed Electrician"],{cat:"electrical"}),T("Electrician",["Wireman","Inside Wireman","Electrical Technician"],{cat:"electrical"}),T("Master Electrician",["Electrical Contractor"],{cat:"electrical"}),T("Apprentice Electrician",["Electrical Apprentice","Electrical Helper"],{cat:"electrical"}),T("Electrical Foreman",["Electrical General Foreman","Foreman Electrician"],{cat:"electrical"}),T("Industrial Electrician",["Maintenance Electrician","Plant Electrician"],{cat:"electrical"}),T("Low Voltage Technician",["Low Voltage Electrician","Structured Cabling Technician","Fire Alarm Technician"],{cat:"electrical"}),T("HVAC Technician",["HVAC Tech","HVACR Technician","HVAC Mechanic","HVAC Service Technician"],{cat:"hvac"}),T("HVAC Installer",["HVAC Install Technician","Sheet Metal Installer"],{cat:"hvac"}),T("Refrigeration Technician",["Refrigeration Mechanic","Commercial Refrigeration Technician"],{cat:"hvac"}),T("Controls Technician",["BAS Technician","Building Automation Technician"],{cat:"hvac"}),T("Plumber",["Journeyman Plumber","Licensed Plumber","Service Plumber"],{cat:"plumbing"}),T("Master Plumber",["Plumbing Contractor"],{cat:"plumbing"}),T("Pipefitter",["Steamfitter","Pipe Fitter","Industrial Pipefitter"],{cat:"plumbing"}),T("Sprinkler Fitter",["Fire Sprinkler Fitter","Fire Protection Technician"],{cat:"plumbing"}),T("Welder",["Pipe Welder","Combination Welder","Structural Welder"],{cat:"general"}),T("Superintendent",["Field Superintendent","Construction Superintendent"],{cat:"general"}),T("Project Manager",["Construction Project Manager","MEP Project Manager"],{cat:"general"}),T("Estimator",["Electrical Estimator","Mechanical Estimator"],{cat:"general"}),T("Foreman",["General Foreman","Crew Foreman"],{cat:"general"})]
+};
+const SKILLS={
+ tech:[T("Python"),T("Java",[],{cs:1}),T("JavaScript",["JS"]),T("TypeScript",["TS"]),T("Go",["Golang"],{cs:1}),T("Rust",[],{cs:1}),T("C++"),T("C#",[".NET","dotnet"]),T("Ruby",["Ruby on Rails","Rails"]),T("PHP"),T("Kotlin"),T("Swift",[],{cs:1}),T("Scala"),T("React",["ReactJS","React.js"],{cs:1}),T("Angular"),T("Vue",["Vue.js","VueJS"],{cs:1}),T("Node.js",["Node","NodeJS"]),T("Next.js",["NextJS"]),T("Django"),T("Flask"),T("FastAPI"),T("Spring",["Spring Boot"],{cs:1}),T("GraphQL"),T("REST",["RESTful","REST APIs"],{cs:1}),T("gRPC"),T("AWS",["Amazon Web Services"]),T("GCP",["Google Cloud","Google Cloud Platform"]),T("Azure"),T("Kubernetes",["K8s","EKS","GKE"]),T("Docker"),T("Terraform",["Infrastructure as Code","IaC"]),T("CI/CD",["Continuous Integration","GitHub Actions","Jenkins","GitLab CI"]),T("PostgreSQL",["Postgres"]),T("MySQL"),T("MongoDB"),T("Redis"),T("Kafka"),T("Spark",["PySpark"],{cs:1}),T("Airflow"),T("Snowflake"),T("dbt"),T("SQL"),T("Machine Learning",["ML"]),T("Deep Learning",["Neural Networks"]),T("PyTorch"),T("TensorFlow"),T("LLM",["LLMs","Large Language Models","Generative AI","GenAI"]),T("NLP",["Natural Language Processing"]),T("Computer Vision"),T("Microservices"),T("Distributed Systems"),T("Linux"),T("iOS"),T("Android"),T("React Native"),T("Flutter"),T("Figma"),T("ETL",["ELT","Data Pipelines"]),T("Elasticsearch",["OpenSearch"]),T("Datadog",["Observability","Grafana","Prometheus"]),T("Security",["Application Security","AppSec"]),T("Salesforce"),T("Payments",["Fintech","Stripe API"]),T("Agile",["Scrum"]),T("System Design"),T("Embedded",["Firmware","RTOS"]),T("Unity",[],{cs:1}),T("Snowflake")],
+ trades:[T("Conduit Bending",["Conduit","EMT","Rigid Conduit","Pipe Bending"],{cat:"electrical"}),T("Blueprint Reading",["Blueprints","Print Reading","Schematics","Construction Drawings"]),T("NEC",["National Electrical Code","NEC Code"],{cs:1,cat:"electrical"}),T("Commercial Electrical",["Commercial Wiring","Commercial Construction"],{cat:"electrical"}),T("Troubleshooting",["Diagnostics"]),T("PLC",["PLCs","Programmable Logic Controllers","Allen Bradley","Siemens PLC"],{cat:"electrical"}),T("Motor Controls",["Motor Control Centers","MCC","VFD","Variable Frequency Drives"],{cat:"electrical"}),T("Fire Alarm",["Fire Alarm Systems","NICET"],{cat:"electrical"}),T("Low Voltage",["Structured Cabling","Data Cabling","Access Control","CCTV"],{cat:"electrical"}),T("Switchgear",["Panelboards","Distribution Panels","Service Entrance"],{cat:"electrical"}),T("Lighting",["Lighting Controls","Lighting Retrofit"],{cat:"electrical"}),T("Three Phase",["3-Phase","480V","Medium Voltage"],{cat:"electrical"}),T("Tenant Finish-Out",["Tenant Improvement","TI Buildout","Finish-Out"],{cat:"electrical"}),T("Ground-Up Construction",["New Construction","Ground Up"]),T("Solar",["Photovoltaic","PV"],{cat:"electrical"}),T("Generators",["Generator Installation","Transfer Switch"],{cat:"electrical"}),T("Refrigeration",["Refrigerant","Walk-In Coolers","Ice Machines"],{cat:"hvac"}),T("Chillers",["Chiller","Cooling Towers"],{cat:"hvac"}),T("Boilers",["Boiler","Hydronic"],{cat:"hvac"}),T("Rooftop Units",["RTU","RTUs","Package Units"],{cat:"hvac"}),T("Ductwork",["Duct Installation","Sheet Metal"],{cat:"hvac"}),T("Building Automation",["BAS","BMS","Controls","DDC"],{cat:"hvac"}),T("Heat Pumps",["Mini Splits","VRF"],{cat:"hvac"}),T("Backflow",["Backflow Prevention","Backflow Testing"],{cat:"plumbing"}),T("Medical Gas",["Med Gas","ASSE 6010"],{cat:"plumbing"}),T("Water Heaters",["Tankless","Water Heater"],{cat:"plumbing"}),T("PEX",["Copper","Sweating Copper","Soldering"],{cat:"plumbing"}),T("Rough-In",["Rough In","Top-Out","Trim-Out"],{cat:"plumbing"}),T("Service Plumbing",["Drain Cleaning","Repipe","Sewer"],{cat:"plumbing"}),T("Pipefitting",["Pipe Fitting","Threading","Grooved Pipe"],{cat:"plumbing"}),T("Welding",["MIG","TIG","Stick Welding","6G"]),T("Industrial",["Industrial Construction","Manufacturing Plant","Oil and Gas"]),T("Residential",["Residential Construction","Service Calls"]),T("Lifts",["Scissor Lift","Boom Lift","Aerial Lift"]),T("Forklift",["Forklift Certified"]),T("Procore",["Bluebeam","Fieldwire"]),T("Estimating",["Takeoffs","Bids"]),T("Crew Leadership",["Supervising","Leading a Crew","Running Work"]),T("Data Centers",["Mission Critical","Data Center Construction"]),T("Healthcare Construction",["Hospital","Medical Office"])]
+};
+const CERTS={"OSHA 10":["OSHA 10","OSHA-10","OSHA 10-Hour","OSHA10"],"OSHA 30":["OSHA 30","OSHA-30","OSHA 30-Hour","OSHA30"],"NCCER":["NCCER"],"NFPA 70E":["NFPA 70E","70E","Arc Flash"],"EPA 608":["EPA 608","EPA Section 608","608 Universal","Universal 608"]};
+const LICENSES={"Journeyman Electrician":["Journeyman Electrician License","Journeyman License","JW License"],"Master Electrician":["Master Electrician License","Master License"],"Residential Wireman":["Residential Wireman License"],"Journeyman Plumber":["Journeyman Plumber License","Plumbing License"],"Master Plumber":["Master Plumber License"],"HVAC/ACR Technician":["ACR License","HVAC License","Air Conditioning License"],"Contractor":["Contractor License"]};
+const CLEAR={"Public Trust":["Public Trust"],"Secret":["Secret Clearance","Active Secret"],"Top Secret":["Top Secret","TS Clearance"],"TS/SCI":["TS/SCI","TS SCI","Top Secret SCI"],"TS/SCI with Poly":["TS/SCI Poly","TS/SCI with Polygraph","Full Scope Poly"]};
+const DEFAULT_EXCLUDE={tech:[T("Recruiter",["Talent Acquisition","Sourcer"]),T("Intern",["Internship","Student"])],trades:[T("Recruiter",["Staffing","Talent Acquisition"]),T("Instructor",["Teacher","Professor"])]};
+const ADJ={
+ "Software Engineer":["Backend Engineer","Full Stack Engineer","Platform Engineer"],"Backend Engineer":["Software Engineer","Platform Engineer","API Engineer","Distributed Systems Engineer"],"Frontend Engineer":["Software Engineer","Web Developer","UI Engineer"],"Full Stack Engineer":["Software Engineer","Web Developer","Product Engineer"],"Data Engineer":["Analytics Engineer","Backend Engineer","ETL Developer"],"Data Scientist":["Machine Learning Engineer","Quantitative Analyst","Research Scientist"],"Machine Learning Engineer":["Data Scientist","Applied Scientist","Software Engineer"],"DevOps Engineer":["Systems Engineer","Cloud Engineer","Build Engineer"],"Mobile Engineer":["Software Engineer","Frontend Engineer"],"Security Engineer":["Security Analyst","DevSecOps Engineer","Penetration Tester"],"Product Manager":["Program Manager","Product Owner","Business Analyst"],
+ "Journeyman Electrician":["Industrial Electrician","Maintenance Electrician","Electrical Technician","Low Voltage Technician","Solar Installer"],"Electrician":["Journeyman Electrician","Industrial Electrician","Electrical Technician","Lineman"],"Electrical Foreman":["Journeyman Electrician","General Foreman","Superintendent"],"HVAC Technician":["Refrigeration Technician","Controls Technician","Facilities Technician","Maintenance Technician"],"HVAC Installer":["HVAC Technician","Sheet Metal Worker","Ductwork Installer"],"Plumber":["Pipefitter","Service Technician","Sprinkler Fitter","Plumbing Apprentice"],"Pipefitter":["Plumber","Steamfitter","Welder","Boilermaker"],"Superintendent":["General Foreman","Project Manager","Field Supervisor"],"Foreman":["Lead","Crew Lead","Superintendent"]
+};
+const EXAMPLES={
+tech:`Senior Backend Engineer
+Austin, TX (Hybrid, 3 days in office) | Series B fintech
+
+About the team
+We are a 40-person engineering org building the ledger and payments platform behind a fast-growing B2B spend-management product. The platform team owns the services that move money, reconcile transactions, and keep the books right.
+
+What you'll do
+- Design and build high-throughput services in Python and Go that process card and ACH transactions
+- Own PostgreSQL schemas and query performance for ledger-critical data
+- Run services on AWS with Kubernetes, and improve observability with Datadog
+- Build event-driven workflows on Kafka
+- Partner with product and finance on reconciliation, reporting, and fraud controls
+- Mentor engineers and raise the bar on code review and system design
+
+What you'll need
+- 6+ years building backend systems in production
+- Strong Python; Go experience a strong plus
+- Deep PostgreSQL experience and comfort with distributed systems
+- Hands-on with AWS and Kubernetes
+- Bachelor's degree in Computer Science required
+- Experience at companies like Stripe, Plaid, Brex, or Ramp is a plus
+- A rockstar who thrives in a fast-paced environment
+
+Nice to have
+- Terraform, GraphQL, gRPC
+- Payments or fintech background
+- Previous startup experience
+
+Compensation
+$165,000 - $195,000 base salary, plus annual bonus target of 10% and meaningful equity. Relocation assistance available. We are unable to sponsor visas for this role at this time.`,
+trades:`Commercial Journeyman Electrician
+Round Rock, TX | Full-time, W-2
+
+Who we are
+A growing commercial electrical contractor serving Central Texas. We run ground-up and tenant finish-out projects: office, healthcare, light industrial and data centers.
+
+What you'll do
+- Install conduit (EMT, rigid), wire, panels and switchgear on commercial job sites
+- Read blueprints and work from construction drawings
+- Terminate and troubleshoot branch circuits, feeders and lighting controls
+- Work to the NEC and local codes with a safety-first mindset
+- Lead apprentices and helpers on your crew
+
+Requirements
+- Active Texas Journeyman Electrician license (TDLR)
+- 4+ years commercial electrical experience
+- OSHA 10 required; OSHA 30 and NFPA 70E a plus
+- Own hand tools and a valid driver's license
+- Reliable transportation to job sites across the Austin metro
+- Comfortable on scissor lifts and boom lifts
+- A young, energetic crew member who can handle manpower needs on tight schedules
+
+Nice to have
+- Fire alarm or low voltage experience
+- PLC and motor control experience
+- Ground-up healthcare or data center projects
+
+Pay and benefits
+$32 - $40 per hour based on experience, overtime at 1.5x after 40 hours, $75 per diem for out-of-town work. Company truck for foremen. Medical, dental, 401(k) match, paid holidays. Union and non-union experience both welcome. We target companies like Rosendin, IES and Cupertino Electric for experienced hands.`
+};
+
+/* ===================== Utilities ===================== */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const h=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uniq=a=>{const s=new Set(),o=[];for(const x of a){const k=String(x).toLowerCase().trim();if(k&&!s.has(k)){s.add(k);o.push(x);}}return o;};
+let _c=0; const nid=()=>'c'+Date.now().toString(36)+(_c++).toString(36);
+const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+function rxFor(term,cs){ const e=esc(term).replace(/\\\s+|\s+/g,'[\\s-]*'); return new RegExp('(?<![A-Za-z0-9])'+e+'(?![A-Za-z0-9])',cs?'g':'gi'); }
+function hits(text,entry){ if(!entry._rx) entry._rx=[entry.t,...entry.syn].map(t=>rxFor(t,entry.cs)); let n=0,first=Infinity; for(const r of entry._rx){ r.lastIndex=0; let m; while((m=r.exec(text))){n++; first=Math.min(first,m.index); if(n>50)break;} } return {n,first}; }
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),1800); }
+async function copyText(s){ try{ await navigator.clipboard.writeText(s); toast('Copied'); return; }catch(e){} const ta=document.createElement('textarea'); ta.value=s; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy'); toast('Copied');}catch(e){toast('Select the text and copy it manually');} ta.remove(); }
+function debounce(f,ms){ let t; return (...a)=>{clearTimeout(t); t=setTimeout(()=>f(...a),ms);} }
+function md(s){ const lines=h(s).split('\n'); let out='',list=null; const inl=x=>x.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>'); const close=()=>{ if(list){out+=`</${list}>`; list=null;} };
+ for(const l of lines){ let m; if((m=l.match(/^#{1,4}\s+(.*)/))){close(); out+=`<h4>${inl(m[1])}</h4>`;} else if((m=l.match(/^\s*[-*•]\s+(.*)/))){ if(list!=='ul'){close(); out+='<ul>'; list='ul';} out+=`<li>${inl(m[1])}</li>`;} else if((m=l.match(/^\s*\d+[.)]\s+(.*)/))){ if(list!=='ol'){close(); out+='<ol>'; list='ol';} out+=`<li>${inl(m[1])}</li>`;} else if(!l.trim()){close();} else {close(); out+=`<p>${inl(l)}</p>`;} } close(); return out; }
+
+/* ===================== State ===================== */
+function freshDetails(){ return {city:'',state:'',metro:'',radius:25,workMode:'onsite',remoteStates:'',relocation:'no',payMin:'',payMax:'',bonus:'',equity:'',ot:'',perDiem:'',empType:'W-2',startDate:'2 weeks from offer',sponsorship:'no',licenseType:'',licenseState:'',certs:[],sector:[],union:'either',ownTools:false,ownTruck:false,dl:false,clearance:'',stage:''}; }
+function freshGroups(){ return {titles:[],core:[],bonus:[],companies:[],locations:[],exclude:[]}; }
+const S={mode:'tech',tab:'build',jd:'',strict:true,levels:[],groups:freshGroups(),details:freshDetails(),editing:null,savedId:null,saved:[],intake:{},theme:'system'};
+const chip=(t,syn,extra)=>Object.assign({id:nid(),t:t.trim(),syn:(syn||[]).map(x=>x.trim()).filter(Boolean),on:true},extra||{});
+const chipTerms=c=>uniq([c.t,...(c.syn||[])]);
+
+/* ===================== Extraction ===================== */
+function detectMode(text){ let tr=0,te=0; for(const e of [...TITLES.trades,...SKILLS.trades]) tr+=Math.min(hits(text,e).n,3); for(const e of [...TITLES.tech,...SKILLS.tech]) te+=Math.min(hits(text,e).n,3); return tr>te?'trades':'tech'; }
+function splitSections(text){ const lines=text.split(/\r?\n/); let m='core'; const out={core:[],bonus:[]}; const bonusH=/\b(nice[\s-]to[\s-]have|preferred|bonus points|pluses|a plus|desired|extra credit|would be great)\b/i; const coreH=/\b(requirements|required|qualifications|must[\s-]have|what you('|’)?ll (need|bring)|what you need|responsibilities|what you('|’)?ll do|about (the|you|us)|compensation|pay|benefits|who we are)\b/i;
+ for(const l of lines){ const t=l.trim(); if(!t) continue; const short=t.length<90||/:$/.test(t); if(short&&bonusH.test(t)&&!/required/i.test(t)) m='bonus'; else if(short&&coreH.test(t)) m='core'; if(/\b(is|are) a plus\b|\ba plus\b/i.test(t)&&!(short&&coreH.test(t))) out.bonus.push(t); else out[m].push(t); } return {core:out.core.join('\n'),bonus:out.bonus.join('\n')}; }
+function extract(text,mode){ text=text||''; const r={groups:freshGroups(),levels:[],details:freshDetails(),title:''}; if(!text.trim()) return r; const sec=splitSections(text); const head=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).slice(0,3).join(' | ');
+ // titles
+ const tl=TITLES[mode].map(e=>({e,...hits(text,e)})).filter(x=>x.n>0).sort((a,b)=>a.first-b.first).slice(0,2);
+ tl.forEach(x=>r.groups.titles.push(chip(x.e.t,x.e.syn)));
+ const first=text.split(/\r?\n/).map(l=>l.trim()).find(l=>l); if(first&&first.length<=70&&!/[.:]$/.test(first)&&!/\b(job|position)\s*(title|description)/i.test(first)){ let ft=first.split(/\s[|–—-]\s|\(/)[0].trim(); const lv=Object.values(LEVELS[mode]).flat(); ft=ft.replace(new RegExp('^(?:'+lv.map(esc).join('|')+')\\s+','i'),'').replace(/^commercial\s+/i,'').trim(); if(ft&&!r.groups.titles.some(c=>chipTerms(c).some(t=>t.toLowerCase()===ft.toLowerCase()))) r.groups.titles.unshift(chip(ft)); }
+ r.title=r.groups.titles[0]?.t||'';
+ // levels
+ for(const [lv,words] of Object.entries(LEVELS[mode])){ if(words.some(w=>rxFor(w).test(head))) r.levels.push(lv); }
+ if(mode==='trades'&&!r.levels.length){ for(const [lv,words] of Object.entries(LEVELS[mode])) if(words.some(w=>rxFor(w).test(sec.core))){ r.levels.push(lv); break; } }
+ // skills
+ const core=[],bonus=[]; for(const e of SKILLS[mode]){ const a=hits(sec.core,e),b=hits(sec.bonus,e); if(a.n) core.push({e,n:a.n,first:a.first}); else if(b.n) bonus.push({e,n:b.n,first:b.first}); }
+ core.sort((a,b)=>b.n-a.n||a.first-b.first); bonus.sort((a,b)=>a.first-b.first);
+ const cap=mode==="trades"?6:8; core.slice(0,cap).forEach(x=>r.groups.core.push(chip(x.e.t,x.e.syn))); [...core.slice(cap),...bonus].slice(0,10).forEach(x=>r.groups.bonus.push(chip(x.e.t,x.e.syn)));
+ // companies
+ const cm=text.match(/(?:companies (?:like|such as)|experience at|backgrounds? from|target(?:ing)? companies(?: like)?)\s+([A-Z][\w&.'-]*(?:\s[A-Z][\w&.'-]*)?(?:,\s*(?:and\s|or\s)?[A-Z][\w&.'-]*(?:\s[A-Z][\w&.'-]*)?)*(?:,?\s(?:and|or)\s[A-Z][\w&.'-]*(?:\s[A-Z][\w&.'-]*)?)?)/);
+ if(cm) cm[1].split(/,\s*(?:and\s|or\s)?|\s(?:and|or)\s/).map(s=>s.trim()).filter(s=>s&&s.length<30).forEach(c=>r.groups.companies.push(chip(c)));
+ // location
+ const lm=text.match(/\b([A-Z][a-zA-Z.]+(?: [A-Z][a-zA-Z]+)?), ?([A-Z]{2})\b/); if(lm&&STATES[lm[2]]){ r.details.city=lm[1]; r.details.state=lm[2]; r.groups.locations.push(chip(`${lm[1]}, ${lm[2]}`)); }
+ else { for(const [a,n] of Object.entries(STATES)){ if(rxFor(n).test(text)){ r.details.state=a; r.groups.locations.push(chip(n)); break; } } }
+ const metro=text.match(/\b([A-Z][a-zA-Z]+(?:\s[A-Z][a-zA-Z]+)?) (?:metro|metropolitan area|area)\b/); if(metro&&!/^(Bay|The)$/.test(metro[1])) r.details.metro=metro[1]+' area';
+ if(/\bremote\b/i.test(text)&&!/\bno remote|not remote|on-?site only/i.test(text)) r.details.workMode='remote'; if(/\bhybrid\b/i.test(text)) r.details.workMode='hybrid';
+ if(/relocation (?:assistance|package|available|offered|provided)/i.test(text)) r.details.relocation='yes';
+ const rad=text.match(/(\d{1,3})\s?(?:mi|mile)s?\b/i); if(rad) r.details.radius=+rad[1];
+ const rs=text.match(/(?:remote|work)\s+(?:in|from)\s+(?:the following states|these states)?[:\s]*([A-Z]{2}(?:,\s?[A-Z]{2})+)/); if(rs) r.details.remoteStates=rs[1];
+ // pay
+ const pm=text.match(/\$\s?(\d[\d,]*(?:\.\d+)?)\s*(k|K)?\s*(?:-|–|—|to)\s*\$?\s?(\d[\d,]*(?:\.\d+)?)\s*(k|K)?\s*(\/\s*(?:hr|hour)|per hour|an hour|hourly)?/);
+ if(pm){ let a=parseFloat(pm[1].replace(/,/g,'')),b=parseFloat(pm[3].replace(/,/g,'')); if(pm[2])a*=1000; if(pm[4])b*=1000; r.details.payMin=a; r.details.payMax=b; }
+ const bm=text.match(/bonus[^.\n]*?(\d{1,2}%|\$[\d,]+)/i); if(bm) r.details.bonus=bm[1]; if(/\bequity\b|\bstock options\b|\bRSU/i.test(text)) r.details.equity='Yes';
+ const om=text.match(/overtime[^.\n]*?(\d(?:\.\d)?x[^.\n,]*|after \d+ hours|time and a half)/i); if(om) r.details.ot=om[1].trim(); const pd=text.match(/\$\s?(\d+)[^.\n]{0,20}per diem/i); if(pd) r.details.perDiem='$'+pd[1]+'/day';
+ if(/\b1099\b/.test(text)) r.details.empType='1099'; if(/contract[\s-]to[\s-]hire/i.test(text)) r.details.empType='Contract-to-hire';
+ const sd=text.match(/start date[:\s]+([^\n.]{3,40})/i); if(sd) r.details.startDate=sd[1].trim();
+ if(/(unable|not able|cannot|can't|do not|won't|will not)\s+(?:to\s+)?(?:provide\s+)?sponsor/i.test(text)) r.details.sponsorship='no'; else if(/sponsorship (?:is )?available|will sponsor|able to sponsor/i.test(text)) r.details.sponsorship='yes';
+ // trades extras
+ if(mode==='trades'){ for(const [c,syn] of Object.entries(CERTS)){ if(syn.some(w=>rxFor(w).test(sec.core))) r.details.certs.push(c); else if(syn.some(w=>rxFor(w).test(sec.bonus))) r.groups.bonus.push(chip(c,syn.filter(x=>x!==c))); }
+  for(const [l] of Object.entries(LICENSES)){ if(rxFor(l+' license').test(text)||rxFor(l).test(text)&&/licens/i.test(text)){ r.details.licenseType=l; break; } }
+  if(r.details.licenseType){ const ls=text.match(/(?:active|valid|current)?\s*([A-Z][a-z]+)\s+(?:Journeyman|Master|Electrician|Plumber|Electrical|HVAC)[^.\n]*licens/i); if(ls&&STATE_BY_NAME[ls[1].toLowerCase()]) r.details.licenseState=STATE_BY_NAME[ls[1].toLowerCase()]; else r.details.licenseState=r.details.state; }
+  if(/\bcommercial\b/i.test(text)) r.details.sector.push('Commercial'); if(/\bresidential\b/i.test(text)) r.details.sector.push('Residential'); if(/\bindustrial\b/i.test(text)) r.details.sector.push('Industrial');
+  if(/\bnon-?union\b/i.test(text)&&!/\bunion and non-?union|union or non-?union|both welcome/i.test(text)) r.details.union='non-union'; else if(/\bIBEW\b|\bUA Local\b|\bunion (?:shop|contractor|electrician|plumber)\b/i.test(text)) r.details.union='union';
+  if(/own (?:hand )?tools/i.test(text)) r.details.ownTools=true; if(/own (?:truck|vehicle)/i.test(text)) r.details.ownTruck=true; if(/driver'?s license|valid DL\b/i.test(text)) r.details.dl=true;
+ } else { for(const c of ["TS/SCI with Poly","TS/SCI","Top Secret","Secret","Public Trust"]){ if(CLEAR[c].some(w=>rxFor(w).test(text))||rxFor(c).test(text)&&/clearance/i.test(text)){ r.details.clearance=c; break; } }
+  const st=text.match(/\b(seed|pre-seed|series [a-e]|pre-ipo|public company|publicly traded)\b/i); if(st){ const v=st[1].toLowerCase(); r.details.stage=/public/.test(v)?'Public':/seed/.test(v)?'Seed':'Series '+v.slice(-1).toUpperCase(); if(/series [de]/.test(v)) r.details.stage='Series D+'; } }
+ DEFAULT_EXCLUDE[mode].forEach(e=>r.groups.exclude.push(chip(e.t,e.syn)));
+ return r; }
+
+/* ===================== Query model ===================== */
+function model(){ const g=S.groups,on=a=>a.filter(c=>c.on);
+ const titles=uniq(on(g.titles).flatMap(chipTerms)); const levels=S.strict?uniq(S.levels.flatMap(l=>LEVELS[S.mode][l]||[])):[];
+ let skills; if(S.strict) skills=on(g.core).map(chipTerms).filter(a=>a.length); else { const pool=uniq([...on(g.core),...on(g.bonus)].flatMap(chipTerms)); skills=pool.length?[pool]:[]; }
+ return {titles,levels,skills,not:uniq(on(g.exclude).flatMap(chipTerms)),companies:uniq(on(g.companies).flatMap(chipTerms)),primaryTitle:on(g.titles)[0]?.t||'',core:on(g.core).map(c=>c.t),bonus:on(g.bonus).map(c=>c.t),locs:locTerms()}; }
+function locTerms(){ const d=S.details,out=[]; const ab=stAbbr(d.state),nm=STATES[ab]||d.state.trim();
+ if(d.workMode==='remote'){ const sts=parseStates(d.remoteStates); if(sts.length) return sts.map(a=>STATES[a]); return ['United States']; }
+ if(d.city.trim()){ if(nm) out.push(`${d.city.trim()}, ${nm}`); if(ab) out.push(`${d.city.trim()}, ${ab}`); if(!nm&&!ab) out.push(d.city.trim()); } else if(nm) out.push(nm);
+ if(d.metro.trim()) out.push(d.metro.trim());
+ S.groups.locations.filter(c=>c.on).forEach(c=>{ if(!out.some(o=>o.toLowerCase()===c.t.toLowerCase())) out.push(c.t); }); return uniq(out); }
+function locLabel(){ const d=S.details; if(d.workMode==='remote'){ const s=parseStates(d.remoteStates); return 'Remote (US)'+(s.length?' in '+s.join(', '):''); } const parts=[d.city.trim(),stAbbr(d.state)||d.state.trim()].filter(Boolean); return (parts.join(', ')||S.groups.locations.find(c=>c.on)?.t||'')+(parts.length&&d.radius?` (${d.radius} mi)`:''); }
+const needQ=t=>/[^A-Za-z0-9]/.test(t);
+const Q=(t,f)=>(f||needQ(t))?`"${t.replace(/"/g,'')}"`:t;
+const orG=(ts,f)=>!ts.length?'':ts.length===1?Q(ts[0],f):'('+ts.map(t=>Q(t,f)).join(' OR ')+')';
+const orCount=s=>(s.match(/\bOR\b/g)||[]).length;
+const gWords=s=>s.replace(/[()]/g,' ').replace(/"[^"]*"/g,m=>m.replace(/\s+/g,'_')).trim().split(/\s+/).filter(Boolean).length;
+// Reduce clauses until ok(serialize(clauses)). Each clause: {terms, role, min}
+function fit(clauses,ser,ok){ const cl=clauses.map(c=>({...c,terms:[...c.terms]})); let removed=0,dropped=0; for(let g=0;g<300&&!ok(ser(cl));g++){ let best=null; for(const c of cl){ if(c.terms.length>(c.min||1)&&(!best||c.terms.length>best.terms.length)) best=c; } if(best){ best.terms.pop(); removed++; continue; } const di=cl.map((c,i)=>i).reverse().find(i=>cl[i].role==='not'||cl[i].role==='skill'&&cl.filter(x=>x.role==='skill').length>1||cl[i].role==='loc'); if(di==null) break; cl.splice(di,1); dropped++; } return {cl,removed,dropped,ok:ok(ser(cl))}; }
+function tradeCat(){ const t=[...S.groups.titles.filter(c=>c.on).map(c=>c.t),...S.groups.core.filter(c=>c.on).map(c=>c.t)].join(' ').toLowerCase(); if(/electri|wire|conduit|switchgear|low voltage/.test(t)) return 'electrical'; if(/hvac|refrig|chiller|boiler|rooftop|duct|controls/.test(t)) return 'hvac'; if(/plumb|pipefit|steamfit|sprinkler|backflow/.test(t)) return 'plumbing'; return 'general'; }
+
+const PLATFORMS=[
+ {id:'lir',name:'LinkedIn Recruiter',modes:['tech','trades'],gen(m){ const parts=[],notes=[]; if(m.titles.length) parts.push({label:'Job titles field',text:m.levels.length?`${orG(m.levels)} AND ${orG(m.titles)}`:orG(m.titles)}); let kw=m.skills.map(c=>orG(c)).filter(Boolean).join(' AND '); if(m.not.length) kw+=(kw?' ':'')+'NOT '+orG(m.not); if(kw) parts.push({label:'Keywords field',text:kw}); if(m.companies.length) parts.push({label:'Companies field (current or past)',text:orG(m.companies)}); const ll=locLabel(); notes.push(ll?`Set the Locations filter to ${ll} instead of typing it as a keyword.`:'Set location and radius in the Locations filter, not as keywords.'); notes.push('Recruiter has no cap on Boolean operators. Operators must be uppercase.'); if(!S.strict) notes.push('Broad mode: the keywords field asks for any one skill from the pool, so expect a big list.'); return {parts,notes}; }},
+ {id:'lif',name:'LinkedIn (free)',modes:['tech','trades'],gen(m){ const cl=[]; if(m.titles.length) cl.push({role:'title',terms:m.titles,min:1}); m.skills.slice(0,3).forEach(t=>cl.push({role:'skill',terms:t,min:1})); if(m.not.length) cl.push({role:'not',terms:m.not.slice(0,3),min:1}); const ser=c=>c.map(x=>x.role==='not'?x.terms.map(t=>'NOT '+Q(t)).join(' '):orG(x.terms)).join(' '); const r=fit(cl,ser,s=>orCount(s)<=5&&s.length<=300); const s=ser(r.cl); const notes=['Free LinkedIn limits Boolean operators (roughly 5 ORs; explicit ANDs are also restricted, so a space is used as AND). NOTs are not limited.','Put location and radius in the Locations filter.']; if(r.removed||r.dropped) notes.push(`Trimmed ${r.removed} synonym${r.removed===1?'':'s'}${r.dropped?` and dropped ${r.dropped} clause${r.dropped===1?'':'s'}`:''} to fit. Use Recruiter or the Google X-ray for the full version.`); if(S.levels.length&&S.strict) notes.push('Level words are left out to save operators; use the title field or scan results.'); return {parts:[{label:'Search bar',text:s,meter:`${orCount(s)} OR, ${s.length} chars`,over:orCount(s)>5||s.length>300}],notes}; }},
+ {id:'gx',name:'Google X-ray of LinkedIn',modes:['tech','trades'],gen(m){ const cl=[]; if(m.titles.length) cl.push({role:'title',terms:m.titles,min:1}); m.skills.forEach(t=>cl.push({role:'skill',terms:t,min:1})); if(m.locs.length) cl.push({role:'loc',terms:m.locs,min:1}); if(m.not.length) cl.push({role:'not',terms:m.not.slice(0,3),min:1}); const pre='site:linkedin.com/in ',suf=' -intitle:profiles -inurl:dir'; const ser=c=>pre+c.map(x=>x.role==='not'?x.terms.map(t=>'-'+Q(t,true)).join(' '):orG(x.terms,true)).join(' ')+suf; const r=fit(cl,ser,s=>gWords(s)<=32); const s=ser(r.cl); const notes=['Google caps a query at 32 words; OR and site: count. Google ANDs by default, NOT becomes a minus sign.','Location is in the string because Google has no location filter. LinkedIn profiles show "City, State" and metro-area wording.']; if(r.removed||r.dropped) notes.push(`Trimmed ${r.removed} synonym${r.removed===1?'':'s'}${r.dropped?` and dropped ${r.dropped} clause${r.dropped===1?'':'s'}`:''} to stay under 32 words.`); return {parts:[{label:'Google search',text:s,meter:`${gWords(s)} / 32 words`,over:gWords(s)>32}],notes}; }},
+ {id:'ai',name:'AI sourcing prompt (Juicebox and similar)',modes:['tech','trades'],gen(m){ const d=S.details; const lvl=S.levels.join(' or '); const t=m.primaryTitle||'candidates'; const alt=S.groups.titles.filter(c=>c.on).slice(1).map(c=>c.t); let s=`Find ${lvl?lvl+'-level ':''}${t}s`; if(alt.length) s+=` (also titled ${alt.join(', ')})`; const ll=locLabel(); if(d.workMode==='remote') s+=` working remotely anywhere in the US${parseStates(d.remoteStates).length?' (must live in '+parseStates(d.remoteStates).join(', ')+')':''}`; else if(ll) s+=` within ${d.radius||25} miles of ${[d.city.trim(),stAbbr(d.state)].filter(Boolean).join(', ')||ll}`; if(d.relocation==='yes') s+=', or open to relocating there'; s+='.'; if(m.core.length) s+=` Must have hands-on experience with ${m.core.join(', ')}.`; if(m.bonus.length) s+=` Nice to have: ${m.bonus.join(', ')}.`; if(m.companies.length) s+=` Prioritize people who have worked at companies like ${m.companies.join(', ')}.`; if(S.mode==='trades'){ if(d.licenseType) s+=` Holds a ${d.licenseType} license${d.licenseState?' in '+ (STATES[d.licenseState]||d.licenseState):''}.`; if(d.certs.length) s+=` Certifications: ${d.certs.join(', ')}.`; if(d.sector.length) s+=` ${d.sector.join(' or ')} work.`; if(d.union==='union') s+=' Union experience welcome.'; } else { if(d.clearance) s+=` Holds an active ${d.clearance} clearance.`; if(d.stage) s+=` Startup experience around ${d.stage} stage is a plus.`; } if(m.not.length) s+=` Exclude ${m.not.join(', ')}.`; return {parts:[{label:'Plain-English prompt',text:s,prose:true}],notes:['AI sourcing tools read plain English. Boolean operators are unnecessary here and can hurt matching.','Say what matters and why; these tools weigh the whole sentence, not exact keywords.']}; }},
+ {id:'dice',name:'Dice',modes:['tech'],gen(m){ let s=''; if(m.titles.length) s=`title:${orG(m.titles,true)}`; if(m.levels.length) s+=(s?' AND ':'')+orG(m.levels); const kw=m.skills.map(c=>orG(c)).filter(Boolean).join(' AND '); if(kw) s+=(s?' AND ':'')+kw; if(m.not.length) s+=' NOT '+orG(m.not); return {parts:[{label:'Dice search',text:s}],notes:['Dice supports AND, OR, NOT, quotes, parentheses and a title: field for current title.','Set location and radius in Dice filters. Its willing-to-relocate filter is fine to use; only filter on sponsorship need, never on citizenship.']}; }},
+ {id:'ghx',name:'GitHub X-ray',modes:['tech'],gen(m){ const pool=uniq(m.skills.flatMap(c=>c.slice(0,1))).slice(0,4); const cl=[]; if(pool.length) cl.push({role:'skill',terms:pool,min:1}); if(m.locs.length) cl.push({role:'loc',terms:m.locs.slice(0,2),min:1}); const pre='site:github.com ("joined on" OR followers) -intitle:"at master" -inurl:tab -inurl:issues '; const ser=c=>pre+c.map(x=>orG(x.terms,true)).join(' '); const r=fit(cl,ser,s=>gWords(s)<=32); const s=ser(r.cl); return {parts:[{label:'Google search',text:s,meter:`${gWords(s)} / 32 words`,over:gWords(s)>32}],notes:['GitHub profiles rarely show job titles, so titles are left out; languages and tools match repos and bios.','Skills are ORed because a profile usually names only a couple. Location only matches if the person filled it in.']}; }},
+ {id:'sox',name:'Stack Overflow X-ray',modes:['tech'],gen(m){ const pool=uniq(m.skills.flatMap(c=>c.slice(0,1))).slice(0,4); const cl=[]; if(pool.length) cl.push({role:'skill',terms:pool,min:1}); if(m.locs.length) cl.push({role:'loc',terms:m.locs.slice(0,2),min:1}); const pre='site:stackoverflow.com/users '; const ser=c=>pre+c.map(x=>orG(x.terms,true)).join(' ')+' -jobs'; const r=fit(cl,ser,s=>gWords(s)<=32); const s=ser(r.cl); return {parts:[{label:'Google search',text:s,meter:`${gWords(s)} / 32 words`,over:gWords(s)>32}],notes:['Matches user profile pages that list the tags and location. Expect a smaller, older pool; good for senior backend and data people.']}; }},
+ {id:'indeed',name:'Indeed Resume',modes:['tech','trades'],gen(m){ let s=''; if(m.titles.length) s=m.titles.length===1?`title:${Q(m.titles[0],true)}`:'('+m.titles.map(t=>'title:'+Q(t,true)).join(' OR ')+')'; if(m.levels.length) s+=(s?' AND ':'')+orG(m.levels); const kw=m.skills.map(c=>orG(c)).filter(Boolean).join(' AND '); if(kw) s+=(s?' AND ':'')+kw; if(m.not.length) s+=' '+m.not.map(t=>'NOT '+Q(t)).join(' '); return {parts:[{label:'Indeed Resume search',text:s}],notes:['Indeed takes AND, OR, NOT, quotes and parentheses, plus field operators: title: (current title), anytitle: (any past title), company:, skill:.','Exclusions use NOT per term, not a NOT group. If a NOT is ignored, swap to -term with no space.','Location and radius go in the "where" box; the string stays keyword-only.']}; }},
+ {id:'zip',name:'ZipRecruiter',modes:['trades'],gen(m){ const t=m.titles.slice(0,3); const sk=uniq(m.skills.flatMap(c=>c.slice(0,1))).slice(0,3); const s=[orG(t,true),...sk.map(x=>Q(x))].filter(Boolean).join(' '); return {parts:[{label:'ZipRecruiter resume search',text:s}],notes:['ZipRecruiter\'s resume search handles simple keywords, quotes and a single OR group; long nested Boolean tends to be ignored, so this is kept to titles plus a few skills.','Use its location, distance and recently-active filters rather than more keywords.']}; }},
+ {id:'fbx',name:'Google X-ray: Facebook groups',modes:['trades'],gen(m){ const cat=tradeCat(); const trade={electrical:['electricians','electrician','IBEW'],hvac:['HVAC','HVAC techs','refrigeration'],plumbing:['plumbers','plumber','pipefitters'],general:[m.primaryTitle||'construction']}[cat]; const loc=m.locs.slice(0,2); const s=`site:facebook.com/groups ${orG(trade,true)} ${orG(loc,true)} (jobs OR hiring OR network)`; return {parts:[{label:'Google search',text:s,meter:`${gWords(s)} / 32 words`}],notes:['Finds local trade groups to join and post in. Member lists are mostly private, so this is a channel, not a profile search.','Follow each group\'s posting rules; many require admin approval for job posts.']}; }},
+ {id:'trx',name:'Google X-ray: resumes and trade sites',modes:['trades'],gen(m){ const cl=[]; if(m.titles.length) cl.push({role:'title',terms:m.titles,min:1}); if(m.locs.length) cl.push({role:'loc',terms:m.locs.slice(0,2),min:1}); const ser=c=>'(intitle:resume OR inurl:resume) '+c.map(x=>orG(x.terms,true)).join(' ')+' -job -jobs -template -sample -apply'; const r=fit(cl,ser,s=>gWords(s)<=32); const s1=ser(r.cl); const cat=tradeCat(); const assoc={electrical:'(site:necanet.org OR site:ieci.org OR site:abc.org)',hvac:'(site:acca.org OR site:mcaa.org OR site:abc.org)',plumbing:'(site:phccweb.org OR site:mcaa.org OR site:ua.org)',general:'(site:abc.org OR site:agc.org)'}[cat]; const s2=`${assoc} ${orG(m.locs.slice(0,2),true)} member`; const lic=stAbbr(S.details.licenseState||S.details.state); return {parts:[{label:'Resume files on the open web',text:s1,meter:`${gWords(s1)} / 32 words`},{label:'Trade associations (find local contractors to target)',text:s2}],notes:['Resume X-ray finds posted resumes and personal sites; expect noise, so keep the location tight.','The association string surfaces member contractors in the area: use them as target companies, then search their current staff on LinkedIn.',`Most states publish license-holder lookups${lic==='TX'?' (Texas: TDLR license search)':''}; a licensed-tradesperson list is the best raw pool for ${cat==='general'?'licensed trades':cat}.`]}; }}
+];
+const platformsFor=mode=>PLATFORMS.filter(p=>p.modes.includes(mode));
+
+/* ===================== Highlighter + checker ===================== */
+function tokenize(s){ const toks=[]; let i=0; const isQ=c=>c==='"'||c==='\u201c'||c==='\u201d';
+ while(i<s.length){ const c=s[i]; if(/\s/.test(c)){i++;continue;} if(c==='('||c===')'){toks.push({t:c,type:c==='('?'lp':'rp',i,e:i+1});i++;continue;}
+  let j=i,prefix=''; if(!isQ(c)){ while(j<s.length&&!/[\s()]/.test(s[j])&&!isQ(s[j])) j++; prefix=s.slice(i,j); if(j<s.length&&isQ(s[j])&&(prefix==='-'||/:$/.test(prefix))){} else { const up=prefix; let type='word'; if(/^(AND|OR|NOT)$/.test(up)) type='op'; else if(/^(and|or|not)$/i.test(up)) type='lop'; else if(up.startsWith('-')) type='neg'; else if(/^[a-z]+:/i.test(up)) type='field'; else if(/^(NEAR|AROUND|W\/\d+)/i.test(up)) type='prox'; toks.push({t:up,type,i,e:j}); i=j; continue; } }
+  // quoted phrase (optionally prefixed)
+  const qs=j; let k=qs+1; while(k<s.length&&!isQ(s[k])) k++; const closed=k<s.length; const t=s.slice(i,closed?k+1:s.length); toks.push({t,type:closed?(prefix==='-'?'neg':prefix?'field':'phrase'):'badq',i,e:closed?k+1:s.length,curly:/[\u201c\u201d]/.test(t)}); i=closed?k+1:s.length; }
+ return toks; }
+function colorize(s,badIdx){ const toks=tokenize(s); let out='',pos=0; const cls={op:t=>'k-'+t.t.toLowerCase(),lop:()=>'k-bad',neg:()=>'k-neg',phrase:()=>'k-ph',field:()=>'k-field',lp:()=>'k-par',rp:()=>'k-par',badq:()=>'k-bad',prox:()=>'k-bad',word:()=>''}; toks.forEach((tk,n)=>{ out+=h(s.slice(pos,tk.i)); let c=cls[tk.type](tk); if(badIdx&&badIdx.has(n)) c+=' k-bad'; out+=c?`<span class="${c.trim()}">${h(tk.t)}</span>`:h(tk.t); pos=tk.e; }); out+=h(s.slice(pos)); return out; }
+function checkString(s,plat){ const toks=tokenize(s),issues=[],bad=new Set(); const add=(sev,title,detail,fix)=>issues.push({sev,title,detail,fix});
+ if(!s.trim()) return {issues:[{sev:'info',title:'Nothing to check',detail:'Paste a string first.'}],bad};
+ // parens
+ let depth=0; toks.forEach((t,n)=>{ if(t.type==='lp'){depth++; if(toks[n+1]&&toks[n+1].type==='rp'){ add('err','Empty parentheses','There is a "()" with nothing inside.'); bad.add(n); bad.add(n+1);} } if(t.type==='rp'){ depth--; if(depth<0){ add('err','Extra closing parenthesis','A ")" appears before any matching "(".'); bad.add(n); depth=0; } } }); if(depth>0) add('err',`${depth} unclosed parenthes${depth===1?'is':'es'}`,'Every "(" needs a ")". Safe fix adds the missing ones at the end.','paren');
+ if(toks.some(t=>t.type==='badq')){ add('err','Unclosed quote','A phrase starts with a quote but never closes. Safe fix adds a closing quote.','quote'); toks.forEach((t,n)=>t.type==='badq'&&bad.add(n)); }
+ if(toks.some(t=>t.curly)) add('warn','Curly quotes','“ ” curly quotes are not treated as phrase markers. Safe fix converts them to straight quotes.','curly');
+ const lops=toks.filter(t=>t.type==='lop'); if(lops.length){ if(plat==='google') add('info','Lowercase operators','Google ignores lowercase "and" (it ANDs anyway) and treats lowercase "or" as a plain word. Safe fix uppercases OR.','upper'); else if(plat!=='ai'){ add('err','Lowercase operators','"'+uniq(lops.map(t=>t.t)).join('", "')+'" will be searched as ordinary words. Operators must be uppercase. Safe fix uppercases them.','upper'); toks.forEach((t,n)=>t.type==='lop'&&bad.add(n)); } }
+ const ops=toks.map((t,n)=>({t,n})).filter(x=>x.t.type==='op'); for(const {t,n} of ops){ const prev=toks[n-1],next=toks[n+1]; const isTerm=x=>x&&['word','phrase','neg','field','lp','prox'].includes(x.type); if(t.t!=='NOT'&&(!prev||prev.type==='lp')){ add('err',`${t.t} at the start`,`${t.t} needs a term on both sides.`); bad.add(n); } if(!next||next.type==='rp'){ add('err',`${t.t} at the end`,`${t.t} needs a term after it.`); bad.add(n); } if(next&&next.type==='op'&&next.t!=='NOT'){ add('err','Two operators in a row',`"${t.t} ${next.t}" leaves one operator with nothing to join.`); bad.add(n); bad.add(n+1); } }
+ // mixed AND/OR at same depth without parens
+ { let d=0; const seen={}; for(const t of toks){ if(t.type==='lp')d++; else if(t.type==='rp')d--; else if(t.type==='op'&&t.t!=='NOT'){ seen[d]=seen[d]||new Set(); seen[d].add(t.t);} } if(Object.values(seen).some(set=>set.size>1)) add('warn','AND and OR mixed without parentheses','Platforms differ on which operator wins. Wrap each OR group in parentheses so the meaning is fixed.'); }
+ const negs=toks.filter(t=>t.type==='neg'),nots=toks.filter(t=>t.type==='op'&&t.t==='NOT'),fields=toks.filter(t=>t.type==='field'),sites=fields.filter(t=>/^site:/i.test(t.t)),wild=toks.filter(t=>t.type==='word'&&t.t.includes('*')),prox=toks.filter(t=>t.type==='prox');
+ if(prox.length){ add('err','Proximity operators','NEAR, AROUND and W/n are not supported on this platform. Replace with a phrase or an AND.'); toks.forEach((t,n)=>t.type==='prox'&&bad.add(n)); }
+ if(plat==='google'){ if(nots.length){ add('err','NOT is ignored by Google','Google excludes with a minus sign directly before the term: -recruiter or -"talent acquisition". Safe fix converts NOT.','not2neg'); toks.forEach((t,n)=>t.type==='op'&&t.t==='NOT'&&bad.add(n)); } const w=gWords(s); if(w>32) add('err',`${w} words, limit is 32`,'Google silently drops everything past the 32nd word (OR and site: count). Trim synonyms or drop a clause.'); else add('ok',`${w} of 32 words`,'Within Google\'s word limit.'); if(toks.some(t=>t.type==='op'&&t.t==='AND')) add('info','Explicit AND','Google ANDs by default; each AND costs a word. Safe to delete.'); if(!sites.length) add('info','No site: operator','For an X-ray, add site:linkedin.com/in (or github.com, stackoverflow.com/users) so results are profiles.'); }
+ else { if(sites.length){ add('err','site: is a Google operator',`${plat==='lir'||plat==='lif'?'LinkedIn':plat==='dice'?'Dice':plat==='indeed'?'Indeed':'This platform'} does not support site:. Remove it, or run the string on Google.`); toks.forEach((t,n)=>/^site:/i.test(t.t)&&bad.add(n)); } }
+ if(plat==='lir'||plat==='lif'){ if(negs.length){ add('err','Minus sign exclusions','LinkedIn does not support -term. Use NOT term instead. Safe fix converts them.','neg2not'); toks.forEach((t,n)=>t.type==='neg'&&bad.add(n)); } if(wild.length) add('warn','Wildcards','LinkedIn does not support * wildcards; the asterisk is ignored or breaks the term. Spell out the variants with OR.'); const f=fields.filter(t=>!/^site:/i.test(t.t)); if(f.length){ add('err','Field operators','LinkedIn has no title: or company: operators in the keyword box; use its separate Title and Company fields instead.'); toks.forEach((t,n)=>t.type==='field'&&bad.add(n)); } if(plat==='lif'){ const o=orCount(s),a=(s.match(/\bAND\b/g)||[]).length; if(o>5) add('err',`${o} ORs on free LinkedIn`,'Free accounts fail with more than about 5 ORs ("This one\'s on us... retry" error). Trim synonyms or use Recruiter.'); else add('ok',`${o} ORs`,'Under the free-account OR limit.'); if(a>0) add('warn',`${a} explicit AND${a>1?'s':''}`,'Free LinkedIn also restricts explicit ANDs. A space between terms works as AND and is not counted. Safe fix removes them.','dropand'); if(s.length>300) add('warn',`${s.length} characters`,'Long strings are more likely to trip the free-search limits; keep it short.'); } else add('ok','Operator count','Recruiter has no cap on Boolean operators.'); }
+ if(plat==='dice'){ if(negs.length){ add('warn','Minus sign exclusions','Dice expects NOT rather than -term. Safe fix converts them.','neg2not'); } const f=fields.filter(t=>!/^(title|site):/i.test(t.t)); if(f.length) add('warn','Unknown field operator','Dice supports title: for current title. Other field operators are searched as text.'); }
+ if(plat==='indeed'){ const f=fields.filter(t=>!/^(title|anytitle|company|skill|school|fieldofstudy|site):/i.test(t.t)); if(f.length) add('warn','Unknown field operator','Indeed supports title:, anytitle:, company:, skill:, school: and fieldofstudy:. Others are searched as text.'); if(nots.length&&toks.some((t,n)=>t.type==='op'&&t.t==='NOT'&&toks[n+1]&&toks[n+1].type==='lp')) add('warn','NOT before a group','Indeed handles NOT more reliably one term at a time: NOT recruiter NOT intern, instead of NOT (recruiter OR intern).'); }
+ if(plat==='zip'){ if(depth!==0||toks.filter(t=>t.type==='lp').length>1||nots.length||negs.length) add('warn','Complex Boolean','ZipRecruiter\'s resume search reliably handles keywords, quotes and one OR group. Nesting and NOT may be ignored; use its filters instead.'); }
+ if(plat==='ai'){ if(ops.length||negs.length||toks.filter(t=>t.type==='lp').length) add('info','Boolean on an AI sourcing tool','Juicebox and similar tools read plain English. Describe the person you want (title, skills, location, must-haves) instead of operators; the Build tab writes that sentence for you.'); }
+ if(!issues.some(i=>i.sev==='err')) issues.unshift({sev:'ok',title:'Structure looks valid',detail:'Brackets and quotes balance, and operators sit between terms.'});
+ return {issues,bad}; }
+function applyFixes(s,plat,issues){ let out=s; const fx=new Set(issues.map(i=>i.fix).filter(Boolean)); if(fx.has('curly')) out=out.replace(/[\u201c\u201d]/g,'"'); if(fx.has('upper')) out=out.replace(/(^|[\s()])(and|or|not)(?=[\s()]|$)/gi,(m,p,w)=>p+(plat==='google'&&w.toLowerCase()!=='or'?w:w.toUpperCase())); if(fx.has('not2neg')) out=out.replace(/\bNOT\s+("[^"]*"|\S+)/g,(m,t)=>'-'+t); if(fx.has('neg2not')) out=out.replace(/(^|\s)-("[^"]*"|[^\s()]+)/g,(m,p,t)=>p+'NOT '+t); if(fx.has('dropand')) out=out.replace(/\s+AND\s+/g,' '); if(fx.has('quote')){ const n=(out.match(/"/g)||[]).length; if(n%2) out+='"'; } if(fx.has('paren')){ let d=0; for(const c of out){ if(c==='(')d++; else if(c===')')d=Math.max(0,d-1);} out+=')'.repeat(d); } return out.replace(/\s+/g,' ').trim(); }
+
+/* ===================== JD quality check (local) ===================== */
+function jdCheck(text,mode){ const items=[]; let score=100; const add=(sev,title,detail,pts)=>{items.push({sev,title,detail}); score-=pts;}; if(!text.trim()) return {score:0,items:[{sev:'info',title:'No JD',detail:'Paste a job description first.'}]};
+ const found=(rx)=>{ const m=text.match(rx); return m?m[0]:''; };
+ if(!/\$\s?\d/.test(text)) add('err','No pay range','Many states and cities (CA, CO, NY, WA, IL, HI, MD, MN and others) require a pay range in postings. Candidates also skip ads without one.',20); else add('ok','Pay range present','Good: a stated range is required in many states and lifts response rates.',0);
+ const age=[/\bdigital native\b/i,/\brecent (?:college )?grad(?:uate)?s?\b/i,/\b(?:max(?:imum)?|no more than|up to|under)\s+\d+\s+years\b/i,/\byoung\b/i,/\byouthful\b/i,/\benergetic\b/i,/\bfresh (?:out of|from)\b/i,/\bearly in (?:their|your) career\b/i,/\boverqualified\b/i]; const ah=age.map(found).filter(Boolean); if(ah.length) add('err','Age-coded language','"'+uniq(ah).join('", "')+'" signals a preferred age group and invites age-discrimination claims. Describe the work, not the person.',12);
+ const gen=[/\brock\s?star\b/i,/\bninja\b/i,/\bguru\b/i,/\bmanpower\b/i,/\bsalesman\b/i,/\bchairman\b/i,/\b(?:he|his|him)\s+(?:will|must|should|has)\b/i,/\bshe\s+(?:will|must|should|has)\b/i,/\baggressive\b/i,/\bdominant\b/i]; const gh=gen.map(found).filter(Boolean); if(gh.length) add('warn','Gendered or coded wording','"'+uniq(gh).join('", "')+'" reads as masculine-coded or pronoun-specific. Use neutral words: "strong performer", "crew/staffing", "they".',8);
+ const excl=[/\bnative (?:english )?speaker\b/i,/\bmust be a (?:US|U\.S\.) citizen\b/i,/\bcitizenship\b/i,/\bable-bodied\b/i,/\bno (?:felons|criminal record)\b/i,/\bculture fit\b/i,/\bclean[\s-]shaven\b/i]; const eh=excl.map(found).filter(Boolean); if(eh.length) add('err','Exclusionary requirement','"'+uniq(eh).join('", "')+'" can exclude people by national origin, disability or record. Keep only requirements the job itself demands (and cite the law if citizenship is truly required, e.g. for a clearance).',12);
+ if(/\b(?:bachelor|ba|bs|b\.s\.|degree)\b[^.\n]{0,40}\brequired\b|\brequired\b[^.\n]{0,40}\b(?:bachelor|degree)\b/i.test(text)) add('warn','Degree stated as required','Unless a license or client contract demands it, write "or equivalent experience". A hard degree line cuts the pool, especially in the trades and for bootcamp or self-taught engineers.',8);
+ const yrs=[...text.matchAll(/(\d{1,2})\+?\s*(?:-\s*\d{1,2}\s*)?years?/gi)].map(m=>+m[1]); const maxY=Math.max(0,...yrs); if(maxY>=10&&!/staff|principal|director|master|superintendent/i.test(text)) add('warn',`${maxY}+ years asked`,'Long year counts at mid/senior level shrink the pool and skew older without improving quality. Ask for outcomes instead.',6);
+ const ex=extract(text,mode); const req=ex.groups.core.length+ex.details.certs.length; if(req>=9) add('warn','Unicorn requirement list',`${req} required skills or certs. Most real candidates have 4 to 6; move the rest to nice-to-have.`,8);
+ if(!ex.groups.titles.length||/rock\s?star|ninja|guru|hero|wizard|evangelist/i.test((text.split('\n')[0]||''))) add('warn','Unclear or novelty title','Use the title candidates search for (for example "Journeyman Electrician", "Senior Backend Engineer"). Search engines and candidates match on the standard title.',8);
+ if(!/sponsor/i.test(text)) add('info','Sponsorship not mentioned','Say whether visa sponsorship is available. The only authorization question to ask is: "Will you now or in the future require sponsorship?"',0);
+ if(/salary history|current salary|previous salary|current compensation/i.test(text)) add('err','Asks for salary history','Asking about pay history is illegal in many states. Remove it and state your range instead.',15);
+ if(mode==='trades'&&!/\b(per diem|overtime|OT\b|1\.5x|time and a half)/i.test(text)) add('info','Overtime and per diem not stated','Trades candidates compare on OT and per diem first. Say how overtime is paid and whether per diem applies.',0);
+ if(mode==='tech'&&!/\b(remote|hybrid|on-?site|in office)\b/i.test(text)) add('info','Work mode not stated','Say remote, hybrid or on-site and the days expected; it is the first filter tech candidates apply.',4);
+ return {score:Math.max(0,score),items}; }
+</script>
+<script>
+/* ===================== Persistence ===================== */
+const LS='sourcery-us-v1';
+const saveLocal=debounce(()=>{ try{ localStorage.setItem(LS,JSON.stringify({mode:S.mode,jd:S.jd,strict:S.strict,levels:S.levels,groups:S.groups,details:S.details,intake:S.intake,theme:S.theme,savedId:S.savedId})); }catch(e){} },300);
+function loadLocal(){ try{ const d=JSON.parse(localStorage.getItem(LS)||'null'); if(d){ Object.assign(S,{mode:d.mode||'tech',jd:d.jd||'',strict:d.strict!==false,levels:d.levels||[],groups:Object.assign(freshGroups(),d.groups||{}),details:Object.assign(freshDetails(),d.details||{}),intake:d.intake||{},theme:d.theme||'system',savedId:d.savedId||null}); } }catch(e){} }
+function applyTheme(){ const r=document.documentElement; if(S.theme==='system') r.removeAttribute('data-theme'); else r.dataset.theme=S.theme; $('#themeBtn').textContent='Theme: '+S.theme[0].toUpperCase()+S.theme.slice(1); }
+
+/* ===================== Mode + tabs ===================== */
+function setMode(m){ S.mode=m; document.body.dataset.mode=m; $$('.modeswitch button').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.mode===m))); S.levels=S.levels.filter(l=>LEVELS[m][l]); renderAll(); saveLocal(); }
+function setTab(t){ S.tab=t; $$('.tab-btn').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t))); $$('.tab').forEach(s=>s.classList.toggle('active',s.id==='tab-'+t)); if(t==='kit') renderKitCtx(); if(t==='saved') renderSaved(); if(t==='intake') renderIntake(); }
+function renderAll(){ $('#jd').value=S.jd; renderDetails(); renderTerms(); renderOutputs(); renderTuneSel(); renderToolList(); renderIntake(); }
+
+/* ===================== Details form ===================== */
+const stateOpts=(v)=>`<option value="">—</option>`+Object.entries(STATES).map(([a,n])=>`<option value="${a}" ${a===v?'selected':''}>${a} – ${n}</option>`).join('');
+const sel=(k,opts,v)=>`<select class="in" data-k="${k}">${opts.map(o=>`<option value="${h(o[0])}" ${o[0]===v?'selected':''}>${h(o[1])}</option>`).join('')}</select>`;
+function renderDetails(){ const d=S.details,T=S.mode==='tech';
+ let html=`<div class="fs-group"><fieldset class="fs"><legend>Location</legend><div class="fields">
+  <label class="f">Work mode${sel('workMode',[['onsite','On-site'],['hybrid','Hybrid'],['remote','Remote (US)']],d.workMode)}</label>
+  ${d.workMode==='remote'?`<label class="f wide">Allowed states (abbreviations, comma-separated; blank = any US state)<input class="in" data-k="remoteStates" value="${h(d.remoteStates)}" placeholder="TX, CO, OK"></label>`:`
+  <label class="f">City<input class="in" data-k="city" value="${h(d.city)}"></label>
+  <label class="f">State<select class="in" data-k="state">${stateOpts(stAbbr(d.state))}</select></label>
+  <label class="f">Metro area<input class="in" data-k="metro" value="${h(d.metro)}" placeholder="Greater Austin"></label>
+  <label class="f">Commute radius (miles)<input class="in" type="number" min="1" max="500" data-k="radius" value="${h(d.radius)}"></label>`}
+  <label class="f">Relocation offered${sel('relocation',[['no','No'],['yes','Yes']],d.relocation)}</label>
+ </div></fieldset></div>
+ <div class="fs-group"><fieldset class="fs"><legend>Pay and terms</legend><div class="fields">
+  ${T?`<label class="f">Base salary from ($)<input class="in" type="number" data-k="payMin" value="${h(d.payMin)}"></label><label class="f">Base salary to ($)<input class="in" type="number" data-k="payMax" value="${h(d.payMax)}"></label><label class="f">Bonus<input class="in" data-k="bonus" value="${h(d.bonus)}" placeholder="10% target"></label><label class="f">Equity<input class="in" data-k="equity" value="${h(d.equity)}" placeholder="0.05%–0.1%"></label>`
+   :`<label class="f">Hourly rate from ($)<input class="in" type="number" step="0.5" data-k="payMin" value="${h(d.payMin)}"></label><label class="f">Hourly rate to ($)<input class="in" type="number" step="0.5" data-k="payMax" value="${h(d.payMax)}"></label><label class="f">Overtime<input class="in" data-k="ot" value="${h(d.ot)}" placeholder="1.5x after 40 hrs"></label><label class="f">Per diem<input class="in" data-k="perDiem" value="${h(d.perDiem)}" placeholder="$75/day out of town"></label><label class="f">Employment type${sel('empType',[['W-2','W-2'],['1099','1099'],['Contract-to-hire','Contract-to-hire']],d.empType)}</label>`}
+  <label class="f">Start date<input class="in" data-k="startDate" value="${h(d.startDate)}"></label>
+  <label class="f">Visa sponsorship available${sel('sponsorship',[['no','No'],['yes','Yes']],d.sponsorship)}</label>
+ </div><p class="note">Work authorization: the only question to ask a candidate is "Will you now or in the future require visa sponsorship?" Never ask about citizenship or national origin.</p></fieldset></div>`;
+ if(T) html+=`<div class="fs-group"><fieldset class="fs"><legend>Tech extras</legend><div class="fields">
+  <label class="f">Security clearance${sel('clearance',[['','None'],...Object.keys(CLEAR).map(c=>[c,c])],d.clearance)}</label>
+  <label class="f">Company stage${sel('stage',[['','—'],['Seed','Seed'],['Series A','Series A'],['Series B','Series B'],['Series C','Series C'],['Series D+','Series D+'],['Public','Public']],d.stage)}</label>
+  </div><p class="hint" style="margin-top:8px">Tech stack is the Core and Bonus skills on the right.</p></fieldset></div>`;
+ else html+=`<div class="fs-group"><fieldset class="fs"><legend>Trades extras</legend><div class="fields">
+  <label class="f">State license type${sel('licenseType',[['','None required'],...Object.keys(LICENSES).map(c=>[c,c])],d.licenseType)}</label>
+  <label class="f">License state<select class="in" data-k="licenseState">${stateOpts(stAbbr(d.licenseState))}</select></label>
+  <div class="wide"><label class="f">Certifications required</label><div class="checks" style="margin-top:4px">${Object.keys(CERTS).map(c=>`<label><input type="checkbox" data-arr="certs" value="${c}" ${d.certs.includes(c)?'checked':''}>${c}</label>`).join('')}</div></div>
+  <div class="wide"><label class="f">Sector</label><div class="checks" style="margin-top:4px">${['Commercial','Residential','Industrial'].map(c=>`<label><input type="checkbox" data-arr="sector" value="${c}" ${d.sector.includes(c)?'checked':''}>${c}</label>`).join('')}</div></div>
+  <label class="f">Union${sel('union',[['either','Either'],['union','Union'],['non-union','Non-union']],d.union)}</label>
+  <div class="wide checks"><label><input type="checkbox" data-k="ownTools" ${d.ownTools?'checked':''}>Own tools</label><label><input type="checkbox" data-k="ownTruck" ${d.ownTruck?'checked':''}>Own truck</label><label><input type="checkbox" data-k="dl" ${d.dl?'checked':''}>Driver's license</label></div>
+  </div><p class="hint" style="margin-top:8px">Union is a positive signal only: selecting union adds IBEW/UA terms, and non-union never excludes union members (that would be illegal under the NLRA).</p></fieldset></div>`;
+ $('#detailsForm').innerHTML=html; }
+$('#detailsForm').addEventListener('input',e=>{ const el=e.target; if(el.dataset.arr){ const a=S.details[el.dataset.arr]; if(el.checked){ if(!a.includes(el.value)) a.push(el.value);} else S.details[el.dataset.arr]=a.filter(x=>x!==el.value); syncAuto(); renderTerms(); } else if(el.dataset.k){ S.details[el.dataset.k]=el.type==='checkbox'?el.checked:el.value; if(['clearance','licenseType','union'].includes(el.dataset.k)){ syncAuto(); renderTerms(); } if(el.dataset.k==='workMode') renderDetails(); } renderOutputs(); saveLocal(); });
+function syncAuto(){ const d=S.details,g=S.groups; const drop=(arr,tag)=>arr.filter(c=>!(c.auto&&c.auto.startsWith(tag))); g.core=drop(g.core,'clearance'); g.core=drop(g.core,'license'); g.core=drop(g.core,'cert'); g.bonus=drop(g.bonus,'union');
+ if(S.mode==='tech'&&d.clearance) g.core.push(chip(d.clearance,CLEAR[d.clearance],{auto:'clearance'}));
+ if(S.mode==='trades'){ if(d.licenseType) g.core.push(chip(LICENSES[d.licenseType][0],[d.licenseType,...LICENSES[d.licenseType].slice(1)],{auto:'license'})); d.certs.forEach(c=>g.core.push(chip(c,CERTS[c].filter(x=>x!==c),{auto:'cert:'+c}))); if(d.union==='union'){ const cat=tradeCat(); g.bonus.push(cat==='electrical'?chip('IBEW',['IBEW Local'],{auto:'union'}):cat==='plumbing'||cat==='hvac'?chip('UA Local',['United Association','Local Union'],{auto:'union'}):chip('Union',['Local Union'],{auto:'union'})); } } }
+
+/* ===================== Terms (chips) ===================== */
+const GROUPS=[['titles','Job titles','Any of these titles (each chip includes its alternate titles)'],['core','Core skills','Strict needs every chip; Broad needs any one. Each chip ORs the skill and its synonyms'],['bonus','Bonus skills','Joins the any-of pool in Broad mode'],['companies','Target companies','Goes to the Companies field where a platform has one'],['locations','Locations','Used by the X-ray strings; other platforms use their location filter'],['exclude','Exclude','NOT terms']];
+function renderTerms(){ $$('#strictSeg button').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.v==='1')===S.strict))); $('#strictHint').textContent=S.strict?'Strict: titles AND level AND every core skill, NOT exclusions. Fewer, closer matches.':'Broad: titles AND any one skill from core or bonus. Level words are ignored. More results.';
+ $('#levels').innerHTML=Object.keys(LEVELS[S.mode]).map(l=>`<button type="button" class="lvl" data-l="${h(l)}" aria-pressed="${S.levels.includes(l)}">${h(l)}</button>`).join('');
+ $('#groups').innerHTML=GROUPS.map(([k,label,hint])=>{ const chips=S.groups[k]; return `<div class="group" data-g="${k}"><div class="group-head"><b>${label}</b><span class="hint">${hint}</span></div><div class="chips">${chips.map(c=>`<span class="chip ${c.on?'on':'off'} ${k==='exclude'?'ex':''}"><button type="button" class="ct" data-g="${k}" data-id="${c.id}" title="${h(c.syn.length?'Also: '+c.syn.join(', '):'Click to switch off')}">${h(c.t)}${c.syn.length?`<small>+${c.syn.length}</small>`:''}</button><button type="button" class="ce" data-edit="${k}" data-id="${c.id}" aria-label="Edit ${h(c.t)}">⋯</button></span>`).join('')}${chips.length?'':'<span class="empty">None yet</span>'}<input class="addterm" data-add="${k}" placeholder="Add (syn, syn)" aria-label="Add term to ${label}"></div>${S.editing&&S.editing.g===k?renderEditor(k):''}</div>`; }).join(''); }
+function renderEditor(k){ const c=S.groups[k].find(x=>x.id===S.editing.id); if(!c) return ''; return `<div class="editor"><input class="in" style="margin:0" id="edInput" value="${h([c.t,...c.syn].join(', '))}" aria-label="Term and synonyms"><button type="button" class="btn small primary" data-edsave="1">Save</button><button type="button" class="btn small danger" data-edremove="1">Remove</button><button type="button" class="btn small ghost" data-edcancel="1">Cancel</button><span class="hint">First item is the term, the rest are ORed synonyms.</span></div>`; }
+function addTerm(k,raw){ const parts=raw.split(',').map(s=>s.trim()).filter(Boolean); if(!parts.length) return; S.groups[k].push(chip(parts[0],parts.slice(1))); }
+$('#termsPane').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+ if(b.classList.contains('lvl')){ const l=b.dataset.l; S.levels=S.levels.includes(l)?S.levels.filter(x=>x!==l):[...S.levels,l]; }
+ else if(b.classList.contains('ct')){ const c=S.groups[b.dataset.g].find(x=>x.id===b.dataset.id); if(c) c.on=!c.on; }
+ else if(b.dataset.edit){ S.editing={g:b.dataset.edit,id:b.dataset.id}; renderTerms(); $('#edInput')?.focus(); return; }
+ else if(b.dataset.edsave){ const c=S.groups[S.editing.g].find(x=>x.id===S.editing.id); const parts=$('#edInput').value.split(',').map(s=>s.trim()).filter(Boolean); if(c&&parts.length){ c.t=parts[0]; c.syn=parts.slice(1); } S.editing=null; }
+ else if(b.dataset.edremove){ S.groups[S.editing.g]=S.groups[S.editing.g].filter(x=>x.id!==S.editing.id); S.editing=null; }
+ else if(b.dataset.edcancel){ S.editing=null; }
+ else if(b.closest('#strictSeg')){ S.strict=b.dataset.v==='1'; }
+ else if(b.id==='btnSave'){ saveCurrent(); return; }
+ else return;
+ renderTerms(); renderOutputs(); saveLocal(); });
+$('#termsPane').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.dataset.add){ e.preventDefault(); addTerm(e.target.dataset.add,e.target.value); renderTerms(); renderOutputs(); saveLocal(); $(`[data-add="${e.target.dataset.add}"]`)?.focus(); } if(e.key==='Enter'&&e.target.id==='edInput'){ e.preventDefault(); $('[data-edsave]').click(); } });
+
+/* ===================== Outputs ===================== */
+function partHTML(p){ return `<div class="part"><div class="part-label"><span>${h(p.label)}${p.meter?` <span class="meter ${p.over?'over':''}">${h(p.meter)}</span>`:''}</span><button type="button" class="btn small" data-copy="${h(p.text)}">Copy</button></div><pre class="str ${p.prose?'prose':''}">${p.prose?h(p.text):colorize(p.text)}</pre></div>`; }
+function renderOutputs(){ const m=model(); const any=m.titles.length||m.skills.length; const el=$('#outputs'); if(!any){ el.innerHTML='<div class="out"><p class="empty">Add a title or a skill (or load the example JD) and strings appear here.</p></div>'; return; }
+ el.innerHTML=platformsFor(S.mode).map(p=>{ const r=p.gen(m); return `<div class="out"><div class="out-head"><h3>${h(p.name)}</h3></div>${r.parts.filter(x=>x.text).map(partHTML).join('')||'<p class="empty">Nothing to search yet.</p>'}${r.notes.length?`<ul class="notes">${r.notes.map(n=>`<li>${h(n)}</li>`).join('')}</ul>`:''}</div>`; }).join(''); }
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-copy]'); if(b){ copyText(b.dataset.copy); } });
+
+/* ===================== Tune the pool ===================== */
+function renderTuneSel(){ $('#tunePlat').innerHTML=platformsFor(S.mode).map(p=>`<option value="${p.id}">${h(p.name)}</option>`).join(''); }
+$('#btnTune').addEventListener('click',()=>{ const n=+$('#tuneN').value,lo=+$('#tuneMin').value||0,hi=+$('#tuneMax').value||0,plat=$('#tunePlat').value; const out=$('#tuneOut'); if(!$('#tuneN').value){ out.innerHTML='<p class="empty">Enter how many results the search returned.</p>'; return; } if(n>=lo&&n<=hi){ out.innerHTML='<div class="sugg"><p>You are inside the target range. Start reviewing profiles; come back when the pool runs dry.</p></div>'; return; }
+ const g=S.groups,d=S.details,on=a=>a.filter(c=>c.on),sug=[]; const add=(text,why,act)=>sug.push({text,why,act}); const primary=on(g.titles)[0]?.t; const r=n>hi?n/Math.max(hi,1):Math.max(lo,1)/Math.max(n,1); const mag=r>=10?'far':r>=3?'well':'a little';
+ if(n>hi){ // narrow
+  if(!S.strict) add('Switch to Strict','Every core skill becomes required instead of any one.',()=>{S.strict=true;});
+  const b=on(g.bonus)[0]; if(b) add(`Make "${b.t}" a core skill`,'Adds one more required skill, the usual single biggest cut.',()=>{ g.bonus=g.bonus.filter(c=>c.id!==b.id); g.core.push(b); });
+  const offCore=g.core.find(c=>!c.on); if(offCore) add(`Switch "${offCore.t}" back on`,'A core skill is currently off.',()=>{offCore.on=true;});
+  if(!S.levels.length){ const l=Object.keys(LEVELS[S.mode])[S.mode==='tech'?2:1]; add(`Add the ${l} level filter`,'Level words trim juniors and seniors alike (Strict only).',()=>{S.levels=[l]; S.strict=true;}); }
+  if(d.workMode!=='remote'&&(+d.radius||25)>15) add(`Tighten radius from ${d.radius||25} to ${Math.max(10,Math.round((d.radius||25)/2))} miles`,'Applies to platforms with a distance filter; the X-ray strings use city names instead.',()=>{d.radius=Math.max(10,Math.round((d.radius||25)/2)); renderDetails();});
+  const ex=S.mode==='tech'?['Manager','Director','Consultant']:['Sales','Estimator','Helper']; const missing=ex.find(t=>!g.exclude.some(c=>c.t.toLowerCase()===t.toLowerCase())); if(missing) add(`Exclude "${missing}"`,'Removes a common false-positive title.',()=>{g.exclude.push(chip(missing));});
+  if(plat==='lir'&&on(g.companies).length) add('Use the Companies filter','In Recruiter, companies as a filter cuts more than companies as keywords.',null);
+  if(on(g.titles).length>2) { const t=on(g.titles)[on(g.titles).length-1]; add(`Drop the title "${t.t}"`,'The last title is usually the loosest match.',()=>{t.on=false;}); }
+ } else { // widen
+  if(S.strict) add('Switch to Broad','Any one core or bonus skill will match instead of all of them.',()=>{S.strict=false;});
+  const last=on(g.core).slice(-1)[0]; if(last&&on(g.core).length>1) add(`Move "${last.t}" to bonus skills`,'One fewer required skill roughly doubles the pool.',()=>{ g.core=g.core.filter(c=>c.id!==last.id); g.bonus.push(last); });
+  const adj=(ADJ[primary]||[]).find(t=>!g.titles.some(c=>chipTerms(c).some(x=>x.toLowerCase()===t.toLowerCase()))); if(adj) add(`Add the title "${adj}"`,'Adjacent titles describe the same work under a different name.',()=>{g.titles.push(chip(adj));});
+  if(S.levels.length) add('Clear the level filter','Level words are inconsistent on profiles; many seniors never write "Senior".',()=>{S.levels=[];});
+  if(d.workMode!=='remote'){ const nr=Math.min(100,(+d.radius||25)*2); add(`Widen radius from ${d.radius||25} to ${nr} miles`,'Trades people commute far for the right rate; tech people for hybrid days.',()=>{d.radius=nr; renderDetails();}); if(S.mode==='tech') add('Open the role to Remote (US)','The single largest pool increase for tech roles.',()=>{d.workMode='remote'; renderDetails();}); else if(d.relocation==='no') add('Offer relocation or per diem','Lets you source from neighboring metros; add the states to a remote-style list.',null); }
+  const auto=on(g.core).find(c=>c.auto); if(auto) add(`Make "${auto.t}" a bonus instead of a requirement`,'Licenses, certs and clearances are often written on resumes but not on profiles.',()=>{ g.core=g.core.filter(c=>c.id!==auto.id); g.bonus.push(auto); });
+  const offB=g.bonus.filter(c=>!c.on)[0]; if(offB&&!S.strict) add(`Switch "${offB.t}" back on`,'More terms in the any-of pool.',()=>{offB.on=true;});
+  if(plat==='lif') add('Run the Google X-ray or Recruiter string','Free LinkedIn trims synonyms; the other two carry the full term list.',null);
+  if(plat==='ghx'||plat==='sox') add('Try Indeed Resume or LinkedIn Recruiter','Developer-site X-rays are small pools by design.',null);
+ }
+ if(!sug.length){ out.innerHTML='<p class="empty">No automatic suggestions for this setup.</p>'; return; }
+ out.innerHTML=`<p class="hint">${n.toLocaleString()} results is ${mag} ${n>hi?'above':'below'} your ${lo.toLocaleString()}–${hi.toLocaleString()} target (${r.toFixed(1)}x). Try these in order:</p>`+sug.map((s,i)=>`<div class="sugg"><p>${h(s.text)}<small>${h(s.why)}</small></p>${s.act?`<button type="button" class="btn small" data-tune="${i}">Apply</button>`:''}</div>`).join(''); out._sug=sug; });
+$('#tuneOut').addEventListener('click',e=>{ const b=e.target.closest('[data-tune]'); if(!b) return; const s=$('#tuneOut')._sug[+b.dataset.tune]; s.act&&s.act(); renderTerms(); renderOutputs(); saveLocal(); b.textContent='Applied'; b.disabled=true; });
+
+/* ===================== JD input ===================== */
+$('#jd').addEventListener('input',e=>{ S.jd=e.target.value; saveLocal(); });
+function runExtract(){ const ex=extract(S.jd,S.mode); S.groups=ex.groups; S.levels=ex.levels; S.details=Object.assign(freshDetails(),ex.details); S.editing=null; S.savedId=null; syncAuto(); renderDetails(); renderTerms(); renderOutputs(); saveLocal(); const n=Object.values(S.groups).reduce((a,b)=>a+b.length,0); $('#jdStatus').textContent=n?`Extracted ${n} terms. Switch chips off, edit synonyms, or add your own.`:'Nothing recognized; add terms by hand on the right.'; }
+$('#btnExtract').addEventListener('click',runExtract);
+$('#btnExample').addEventListener('click',()=>{ S.jd=EXAMPLES[S.mode]; $('#jd').value=S.jd; runExtract(); });
+$('#jdFile').addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f) return; $('#jdStatus').textContent='Reading '+f.name+'…'; try{ const text=await readFile(f); S.jd=text; $('#jd').value=text; runExtract(); }catch(err){ $('#jdStatus').textContent='Could not read that file: '+(err.message||err); } e.target.value=''; });
+async function readFile(f){ const name=f.name.toLowerCase(); if(name.endsWith('.pdf')){ if(!window.pdfjsLib) throw new Error('PDF reader did not load'); const buf=await f.arrayBuffer(); const pdf=await pdfjsLib.getDocument({data:buf}).promise; let out=''; for(let i=1;i<=pdf.numPages;i++){ const pg=await pdf.getPage(i); const tc=await pg.getTextContent(); let last=null; for(const it of tc.items){ if(last&&Math.abs(last-it.transform[5])>3) out+='\n'; out+=it.str+(it.hasEOL?'\n':' '); last=it.transform[5]; } out+='\n'; } return out.replace(/[ \t]+\n/g,'\n'); } if(name.endsWith('.docx')){ if(!window.mammoth) throw new Error('Word reader did not load'); const r=await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()}); return r.value; } if(name.endsWith('.doc')) throw new Error('Old .doc files are not supported; save as .docx or paste the text'); return await f.text(); }
+
+/* ===================== HM intake ===================== */
+function renderIntake(){ const I=S.intake,T=S.mode==='tech'; const v=k=>h(I[k]||''); const lv=Object.keys(LEVELS[S.mode]);
+ $('#intakeForm').innerHTML=`<div class="fields">
+  <label class="f">Role title <span class="req">*</span><input class="in" data-i="title" value="${v('title')}" placeholder="${T?'Senior Backend Engineer':'Commercial Journeyman Electrician'}"></label>
+  <label class="f">Role type<select class="in" data-i="mode"><option value="tech" ${!T?'':'selected'}>Tech</option><option value="trades" ${T?'':'selected'}>Skilled trades</option></select></label>
+  <label class="f">Level<select class="in" data-i="level"><option value="">—</option>${lv.map(l=>`<option ${I.level===l?'selected':''}>${l}</option>`).join('')}</select></label>
+  <label class="f">Work mode<select class="in" data-i="workMode"><option value="onsite" ${I.workMode==='onsite'?'selected':''}>On-site</option><option value="hybrid" ${I.workMode==='hybrid'?'selected':''}>Hybrid</option><option value="remote" ${I.workMode==='remote'?'selected':''}>Remote (US)</option></select></label>
+  <label class="f">City<input class="in" data-i="city" value="${v('city')}"></label>
+  <label class="f">State<select class="in" data-i="state">${stateOpts(stAbbr(I.state))}</select></label>
+  <label class="f">Commute radius (mi) or allowed remote states<input class="in" data-i="radiusOrStates" value="${v('radiusOrStates')}" placeholder="${I.workMode==='remote'?'TX, CO, OK':'25'}"></label>
+  <label class="f">Relocation offered<select class="in" data-i="relocation"><option value="no" ${I.relocation!=='yes'?'selected':''}>No</option><option value="yes" ${I.relocation==='yes'?'selected':''}>Yes</option></select></label>
+  ${T?`<label class="f">Base salary from ($) <span class="req">*</span><input class="in" type="number" data-i="payMin" value="${v('payMin')}"></label><label class="f">Base salary to ($) <span class="req">*</span><input class="in" type="number" data-i="payMax" value="${v('payMax')}"></label><label class="f">Bonus<input class="in" data-i="bonus" value="${v('bonus')}"></label><label class="f">Equity<input class="in" data-i="equity" value="${v('equity')}"></label>`
+   :`<label class="f">Hourly rate from ($) <span class="req">*</span><input class="in" type="number" step="0.5" data-i="payMin" value="${v('payMin')}"></label><label class="f">Hourly rate to ($) <span class="req">*</span><input class="in" type="number" step="0.5" data-i="payMax" value="${v('payMax')}"></label><label class="f">Overtime<input class="in" data-i="ot" value="${v('ot')}" placeholder="1.5x after 40"></label><label class="f">Per diem<input class="in" data-i="perDiem" value="${v('perDiem')}"></label><label class="f">Employment type<select class="in" data-i="empType">${['W-2','1099','Contract-to-hire'].map(x=>`<option ${I.empType===x?'selected':''}>${x}</option>`).join('')}</select></label>`}
+  <label class="f">Start date<input class="in" data-i="startDate" value="${h(I.startDate||'2 weeks from offer')}"></label>
+  <label class="f">Visa sponsorship available<select class="in" data-i="sponsorship"><option value="no" ${I.sponsorship!=='yes'?'selected':''}>No</option><option value="yes" ${I.sponsorship==='yes'?'selected':''}>Yes</option></select></label>
+  <div class="wide"><p class="note">Pay range is required: Colorado, California, Washington, New York, Illinois, Hawaii, Maryland, Minnesota and several cities require it in postings, and candidates increasingly skip ads without one. Do not ask candidates for current pay or salary history; it is illegal in many states.</p></div>
+  <label class="f wide">About the team<textarea class="in" data-i="team">${v('team')}</textarea></label>
+  <label class="f wide">Must-haves (one per line or comma-separated)<textarea class="in" data-i="must">${v('must')}</textarea></label>
+  <label class="f wide">Nice-to-haves<textarea class="in" data-i="nice">${v('nice')}</textarea></label>
+  <label class="f wide">Deal-breakers<textarea class="in" data-i="deal">${v('deal')}</textarea></label>
+  <label class="f">Target companies<textarea class="in" data-i="target">${v('target')}</textarea></label>
+  <label class="f">Companies to avoid (clients, partners)<textarea class="in" data-i="avoid">${v('avoid')}</textarea></label>
+  <label class="f wide">Interview steps<textarea class="in" data-i="steps">${v('steps')}</textarea></label>
+ </div>`; }
+$('#intakeForm').addEventListener('input',e=>{ const k=e.target.dataset.i; if(!k) return; S.intake[k]=e.target.value; if(k==='mode'){ setMode(e.target.value); setTab('intake'); } saveLocal(); });
+const splitList=s=>uniq((s||'').split(/\n|,|;/).map(x=>x.trim()).filter(Boolean));
+function intakeToBuild(){ const I=S.intake; if(!I.title||!I.payMin||!I.payMax){ $('#intakeStatus').textContent='Role title and a pay range are required.'; return false; } if(I.mode&&I.mode!==S.mode) setMode(I.mode);
+ const g=freshGroups(); const t=extract(I.title,S.mode); g.titles=t.groups.titles.length?t.groups.titles:[chip(I.title)];
+ const mkSkill=s=>{ const e=SKILLS[S.mode].find(x=>[x.t,...x.syn].some(y=>y.toLowerCase()===s.toLowerCase())); return e?chip(e.t,e.syn):chip(s); };
+ g.core=splitList(I.must).map(mkSkill); g.bonus=splitList(I.nice).map(mkSkill); g.companies=splitList(I.target).map(c=>chip(c)); g.exclude=[...DEFAULT_EXCLUDE[S.mode].map(e=>chip(e.t,e.syn)),...splitList(I.avoid).map(c=>chip(c))];
+ const d=freshDetails(); d.city=I.city||''; d.state=I.state||''; d.workMode=I.workMode||'onsite'; if(d.workMode==='remote') d.remoteStates=I.radiusOrStates||''; else d.radius=+I.radiusOrStates||25; d.relocation=I.relocation||'no'; d.payMin=I.payMin; d.payMax=I.payMax; d.bonus=I.bonus||''; d.equity=I.equity||''; d.ot=I.ot||''; d.perDiem=I.perDiem||''; d.empType=I.empType||'W-2'; d.startDate=I.startDate||'2 weeks from offer'; d.sponsorship=I.sponsorship||'no';
+ if(d.city&&d.state) g.locations.push(chip(`${d.city}, ${stAbbr(d.state)}`));
+ S.groups=g; S.details=d; S.levels=I.level?[I.level]:[]; S.savedId=null; S.jd=intakeSummary(); $('#jd').value=S.jd; syncAuto(); renderDetails(); renderTerms(); renderOutputs(); saveLocal(); return true; }
+function intakeSummary(){ const I=S.intake,T=(I.mode||S.mode)==='tech'; const L=[]; L.push(`${I.title||''}${I.level?' ('+I.level+')':''}`); L.push(`Role type: ${T?'Tech':'Skilled trades'}`); L.push(`Location: ${I.workMode==='remote'?'Remote (US)'+(I.radiusOrStates?' in '+I.radiusOrStates:''):[I.city,I.state].filter(Boolean).join(', ')+(I.radiusOrStates?' ('+I.radiusOrStates+' mi)':'')+' – '+(I.workMode||'onsite')}; relocation ${I.relocation||'no'}`); L.push(T?`Pay: $${I.payMin||'?'}–$${I.payMax||'?'} base${I.bonus?', bonus '+I.bonus:''}${I.equity?', equity '+I.equity:''}`:`Pay: $${I.payMin||'?'}–$${I.payMax||'?'}/hr${I.ot?', OT '+I.ot:''}${I.perDiem?', per diem '+I.perDiem:''}, ${I.empType||'W-2'}`); L.push(`Start date: ${I.startDate||'2 weeks from offer'}`); L.push(`Sponsorship available: ${I.sponsorship||'no'}`); if(I.team) L.push(`\nAbout the team\n${I.team}`); if(I.must) L.push(`\nMust-haves\n${I.must}`); if(I.nice) L.push(`\nNice to have\n${I.nice}`); if(I.deal) L.push(`\nDeal-breakers\n${I.deal}`); if(I.target) L.push(`\nTarget companies\n${I.target}`); if(I.avoid) L.push(`\nCompanies to avoid\n${I.avoid}`); if(I.steps) L.push(`\nInterview steps\n${I.steps}`); return L.join('\n'); }
+$('#btnIntakeBuild').addEventListener('click',()=>{ if(intakeToBuild()){ setTab('build'); toast('Search built from intake'); } });
+$('#btnIntakeSave').addEventListener('click',()=>{ if(intakeToBuild()) saveCurrent('In review'); });
+$('#btnIntakeCopy').addEventListener('click',()=>copyText(intakeSummary()));
+
+/* ===================== Bulk ===================== */
+function withState(tmp,fn){ const keep={mode:S.mode,groups:S.groups,levels:S.levels,details:S.details,strict:S.strict}; Object.assign(S,tmp); document.body.dataset.mode=S.mode; try{ return fn(); } finally { Object.assign(S,keep); document.body.dataset.mode=S.mode; } }
+$('#btnBulkExample').addEventListener('click',()=>{ $('#bulkText').value=EXAMPLES.tech+'\n---\n'+EXAMPLES.trades; });
+$('#btnBulk').addEventListener('click',()=>{ const parts=$('#bulkText').value.split(/^\s*---+\s*$/m).map(s=>s.trim()).filter(Boolean); if(!parts.length){ $('#bulkStatus').textContent='Paste at least one JD.'; return; } if(parts.length>10) $('#bulkStatus').textContent=`Only the first 10 of ${parts.length} JDs were used.`; else $('#bulkStatus').textContent=`${parts.length} search${parts.length===1?'':'es'} generated.`; const use=parts.slice(0,10);
+ $('#bulkOut').innerHTML=use.map((txt,i)=>{ const mode=detectMode(txt); const ex=extract(txt,mode); return withState({mode,groups:ex.groups,levels:ex.levels,details:ex.details,strict:true},()=>{ syncAuto(); const m=model(); const lir=PLATFORMS.find(p=>p.id==='lir').gen(m),gx=PLATFORMS.find(p=>p.id==='gx').gen(m),ai=PLATFORMS.find(p=>p.id==='ai').gen(m); return `<div class="bulk-card"><div class="row spread"><h3 style="font-size:15px">${i+1}. ${h(ex.title||'Untitled')} <span class="badge">${mode==='tech'?'Tech':'Trades'}</span>${ex.levels.length?` <span class="badge">${h(ex.levels.join(', '))}</span>`:''}</div><button type="button" class="btn small" data-bulkopen="${i}">Open in Build</button></div><p class="hint" style="margin:4px 0 0">${h(['Core: '+(m.core.join(', ')||'none'),locLabel()?'Location: '+locLabel():''].filter(Boolean).join(' · '))}</p>${lir.parts.map(partHTML).join('')}${gx.parts.map(partHTML).join('')}${ai.parts.map(partHTML).join('')}</div>`; }); }).join('');
+ $('#bulkOut')._parts=use; });
+$('#bulkOut').addEventListener('click',e=>{ const b=e.target.closest('[data-bulkopen]'); if(!b) return; const txt=$('#bulkOut')._parts[+b.dataset.bulkopen]; const mode=detectMode(txt); S.jd=txt; $('#jd').value=txt; setMode(mode); runExtract(); setTab('build'); });
+
+/* ===================== Check a string ===================== */
+function doCheck(){ const s=$('#chkText').value,plat=$('#chkPlat').value; const r=checkString(s,plat); $('#chkHL').innerHTML=colorize(s,r.bad)||'<span class="empty">Nothing yet</span>'; const e=r.issues.filter(i=>i.sev==='err').length,w=r.issues.filter(i=>i.sev==='warn').length; $('#chkMeter').textContent=s.trim()?`${e} error${e===1?'':'s'}, ${w} warning${w===1?'':'s'}`:''; $('#chkOut').innerHTML=r.issues.map(i=>`<div class="issue"><span class="dot ${i.sev}"></span><div><b>${h(i.title)}</b><p>${h(i.detail)}</p></div></div>`).join(''); $('#chkOut')._issues=r.issues; }
+$('#btnCheck').addEventListener('click',doCheck); $('#chkPlat').addEventListener('change',doCheck); $('#chkText').addEventListener('input',debounce(doCheck,400));
+$('#btnFix').addEventListener('click',()=>{ doCheck(); const fixed=applyFixes($('#chkText').value,$('#chkPlat').value,$('#chkOut')._issues||[]); $('#chkText').value=fixed; doCheck(); toast('Safe fixes applied'); });
+$('#btnChkCopy').addEventListener('click',()=>copyText($('#chkText').value));
+
+/* ===================== Compare ===================== */
+$('#cmpExA').addEventListener('click',()=>{ $('#cmpA').value=EXAMPLES[S.mode]; });
+$('#cmpExB').addEventListener('click',()=>{ let t=EXAMPLES[S.mode]; t=S.mode==='tech'?t.replace('Senior Backend Engineer','Staff Backend Engineer').replace("- Bachelor's degree in Computer Science required\n",'').replace('A rockstar who thrives in a fast-paced environment','Comfortable owning ambiguous problems end to end').replace('$165,000 - $195,000','$190,000 - $230,000').replace('- Terraform, GraphQL, gRPC','- Terraform, GraphQL, gRPC, Rust').replace('Hands-on with AWS and Kubernetes','Hands-on with AWS, Kubernetes and Terraform'):t.replace('Round Rock, TX','Austin, TX').replace('$32 - $40 per hour','$34 - $42 per hour').replace('- A young, energetic crew member who can handle manpower needs on tight schedules','- Able to keep crews staffed and on schedule').replace('OSHA 10 required; OSHA 30 and NFPA 70E a plus','OSHA 30 and NFPA 70E required').replace('- PLC and motor control experience\n',''); $('#cmpB').value=t; });
+$('#btnCompare').addEventListener('click',()=>{ const a=$('#cmpA').value,b=$('#cmpB').value; if(!a.trim()||!b.trim()){ $('#cmpOut').innerHTML='<p class="empty">Paste both versions first.</p>'; return; } const ma=detectMode(a),mb=detectMode(b); const A=extract(a,ma),B=extract(b,mb); const names=g=>g.map(c=>c.t); const diff=(x,y)=>{ const lx=x.map(s=>s.toLowerCase()),ly=y.map(s=>s.toLowerCase()); return {both:x.filter(s=>ly.includes(s.toLowerCase())),a:x.filter(s=>!ly.includes(s.toLowerCase())),b:y.filter(s=>!lx.includes(s.toLowerCase()))}; }; const chipsHTML=(arr,cls)=>arr.length?arr.map(s=>`<span class="mini ${cls}">${h(s)}</span>`).join(''):'<span class="empty">none</span>';
+ const rows=[['Titles','titles'],['Core skills','core'],['Bonus skills','bonus'],['Target companies','companies'],['Locations','locations']].map(([l,k])=>{ const d=diff(names(A.groups[k]),names(B.groups[k])); return `<tr><th>${l}</th><td>${chipsHTML(d.both,'')}</td><td>${chipsHTML(d.a,'a')}</td><td>${chipsHTML(d.b,'b')}</td></tr>`; }).join('');
+ const fact=(l,x,y)=>`<tr><th>${l}</th><td colspan="3"><span class="mini ${x===y?'':'a'}">A: ${h(x||'—')}</span> <span class="mini ${x===y?'':'b'}">B: ${h(y||'—')}</span>${x===y?'':' <span class="hint">changed</span>'}</td></tr>`; const pay=e=>e.payMin?`$${e.payMin.toLocaleString()}–$${e.payMax.toLocaleString()}`:'none stated'; const qa=jdCheck(a,ma),qb=jdCheck(b,mb);
+ const facts=fact('Role type',ma,mb)+fact('Level',A.levels.join(', '),B.levels.join(', '))+fact('Pay',pay(A.details),pay(B.details))+fact('Work mode',A.details.workMode,B.details.workMode)+fact('Location',[A.details.city,A.details.state].filter(Boolean).join(', '),[B.details.city,B.details.state].filter(Boolean).join(', '))+fact('Sponsorship',A.details.sponsorship,B.details.sponsorship)+(ma==='trades'||mb==='trades'?fact('Certs required',A.details.certs.join(', '),B.details.certs.join(', '))+fact('License',A.details.licenseType,B.details.licenseType):fact('Clearance',A.details.clearance,B.details.clearance))+fact('JD quality score',String(qa.score),String(qb.score));
+ const flags=(q,cls)=>q.items.filter(i=>i.sev!=='ok'&&i.sev!=='info').map(i=>`<span class="mini ${cls}">${h(i.title)}</span>`).join('')||'<span class="empty">no flags</span>';
+ $('#cmpOut').innerHTML=`<div class="pane scroll-x"><table class="cmp"><thead><tr><th style="width:140px"></th><th>In both</th><th>Only in A</th><th>Only in B</th></tr></thead><tbody>${rows}${facts}<tr><th>Quality flags</th><td colspan="3"><div style="margin-bottom:4px">A: ${flags(qa,'a')}</div><div>B: ${flags(qb,'b')}</div></td></tr></tbody></table><div class="row" style="margin-top:12px"><button type="button" class="btn" id="useA">Use A in Build</button><button type="button" class="btn" id="useB">Use B in Build</button></div></div>`;
+ $('#useA').onclick=()=>{ S.jd=a; $('#jd').value=a; setMode(ma); runExtract(); setTab('build'); }; $('#useB').onclick=()=>{ S.jd=b; $('#jd').value=b; setMode(mb); runExtract(); setTab('build'); }; });
+
+/* ===================== Recruiter kit ===================== */
+let sample=null,db=null,user=null,canWrite=null,myId=null,kitCtl=null;
+const GUARD=`Rules: US recruiting context. Follow EEO law. Never reference, target, screen on, or exclude anyone by age, race, color, religion, sex, sexual orientation, gender identity, pregnancy, family status, national origin, citizenship, disability, genetic information, or arrest record, and never ask about salary history. Veteran status may only be used positively (as a source), never as a filter. The only work-authorization question allowed is "Will you now or in the future require visa sponsorship?" Do not invent facts about the employer; use [Company] and similar placeholders where unknown. Plain, concise US English. Use simple markdown only: ## headings, - bullets, 1. numbered lists, **bold**.`;
+function ctxText(){ const m=model(),d=S.details,T=S.mode==='tech'; const L=[]; L.push(`Role type: ${T?'Tech / startup':'Skilled trades'}`); L.push(`Titles: ${S.groups.titles.filter(c=>c.on).map(c=>c.t).join(', ')||'(none)'}`); if(S.levels.length) L.push(`Level: ${S.levels.join(', ')}`); L.push(`Core skills (required): ${m.core.join(', ')||'(none)'}`); if(m.bonus.length) L.push(`Bonus skills: ${m.bonus.join(', ')}`); if(m.companies.length) L.push(`Target companies: ${m.companies.join(', ')}`); L.push(`Location: ${locLabel()||'(not set)'}; relocation ${d.relocation}`);
+ L.push(T?`Pay: base ${d.payMin?'$'+(+d.payMin).toLocaleString():'?'}–${d.payMax?'$'+(+d.payMax).toLocaleString():'?'}${d.bonus?', bonus '+d.bonus:''}${d.equity?', equity '+d.equity:''}`:`Pay: ${d.payMin?'$'+d.payMin:'?'}–${d.payMax?'$'+d.payMax:'?'}/hr${d.ot?', OT '+d.ot:''}${d.perDiem?', per diem '+d.perDiem:''}, ${d.empType}`); L.push(`Start date: ${d.startDate}`); L.push(`Visa sponsorship available: ${d.sponsorship}`);
+ if(T){ if(d.clearance) L.push(`Clearance: ${d.clearance}`); if(d.stage) L.push(`Company stage: ${d.stage}`); } else { if(d.licenseType) L.push(`License: ${d.licenseType}${d.licenseState?' ('+(STATES[d.licenseState]||d.licenseState)+')':''}`); if(d.certs.length) L.push(`Certs required: ${d.certs.join(', ')}`); if(d.sector.length) L.push(`Sector: ${d.sector.join(', ')}`); L.push(`Union: ${d.union}; own tools ${d.ownTools?'yes':'no'}; own truck ${d.ownTruck?'yes':'no'}; driver's license ${d.dl?'required':'not required'}`); }
+ if(S.jd.trim()) L.push(`\nJob description:\n${S.jd.slice(0,3500)}`); return L.join('\n'); }
+const TOOLS=[
+ {id:'outreach',name:'Outreach',desc:'InMail, email and a short text',note:'Text messages need the candidate\'s prior consent (TCPA). Send texts only to people who agreed to be texted, and keep an opt-out line.',prompt:'Write three outreach messages for this role: 1) a LinkedIn InMail (subject line + under 90 words), 2) an email (subject line + under 140 words), 3) a text message under 300 characters that ends with "Reply STOP to opt out". Lead with what matters to this kind of candidate (trades: rate, overtime, per diem, schedule, tools/truck; tech: stack, problem, team, pay band). Include one personalization placeholder like [mention something from their profile]. No hype words.'},
+ {id:'pitch',name:'Role pitch sheet',desc:'One-page "why join" for candidates and agencies',prompt:'Write a one-page role pitch sheet for candidates and partner agencies: role in one sentence, why this role is worth a look (3-5 concrete points), what the first 90 days look like, pay and terms, location and schedule, the interview steps (use placeholders if unknown), and a two-sentence agency briefing on who fits and who does not. Use ## headings.'},
+ {id:'screen',name:'Screening questions',desc:'5 knockout questions with good-answer notes',note:'Questions must be job-related only. Nothing about age, family, health, religion, national origin, arrest record or salary history.',prompt:'Write exactly 5 knockout screening questions for a recruiter phone screen. For each: the question, what a good answer sounds like (2-3 sentences), and a red flag. Questions must be strictly job-related (skills, licenses, certifications, schedule and location logistics, pay expectations for THIS role, start date). If sponsorship is not available, one question may be the exact sentence "Will you now or in the future require visa sponsorship?" Never ask about citizenship, age, family, health, religion, national origin, arrest record, or salary history.'},
+ {id:'hidden',name:'Hidden talent finder',desc:'Adjacent titles and backgrounds, one-click add',json:true,prompt:'List adjacent job titles and backgrounds that could do this job but would be missed by a title-only search. Include adjacent titles, adjacent trades or specialties, military occupations (name branch and the job title as a civilian would search it, only if it genuinely maps), apprenticeship or bootcamp paths, and industry crossovers. Reply with only a JSON array of 6 to 10 objects: {"title": "a searchable title or background phrase", "why": "one sentence on why they fit"}. No prose outside the JSON.'},
+ {id:'broaden',name:'Broaden the pool',desc:'Overlooked sources and requirements to relax',note:'Suggestions widen where you look and what you require. They never target or exclude anyone by protected characteristics.',prompt:'Recommend ways to broaden this candidate pool: 1) overlooked sourcing channels specific to this role and location (schools, unions, apprenticeship programs, associations, communities, boards), 2) requirements that could be relaxed or turned into nice-to-haves with the trade-off for each, 3) posting changes that increase response. Base everything on skills, channels and job requirements. Do not suggest targeting or excluding any protected group.'},
+ {id:'market',name:'Market reality',desc:'How hard this mix is and what to change',prompt:'Assess how hard this search is: rate difficulty 1 (easy) to 5 (very hard) with a one-line reason, then explain the three biggest constraints in the skill, level, location and pay mix, and give the specific changes that would most improve fill odds (with the trade-off of each). Be direct; give rough numbers where you can and say they are estimates.'},
+ {id:'metro',name:'Talent by US metro',desc:'Where this talent concentrates, how hard competition is',prompt:'List the 6 to 8 US metro areas where this talent is most concentrated for this role and skills. For each: why it concentrates there (employers, industries, schools, projects), competition level (low/medium/high), and a one-line sourcing angle. Note whether remote or relocation changes the picture. Mark the output as an estimate.'},
+ {id:'pay',name:'Pay range estimate',desc:'Rough US range by level and metro',note:'Estimate only. Check BLS OEWS wage data (bls.gov/oes) and, for tech, Levels.fyi before quoting a number.',prompt:'Give a rough US pay range for this role at the stated level and metro (or national if no metro), in the right format (tech: base, bonus, equity; trades: hourly rate, overtime norms, per diem norms, union vs non-union if relevant). Show low / mid / high, say what moves someone across the range, and compare with the pay in the role details if given. Label everything clearly as an estimate and recommend verifying with BLS OEWS data and Levels.fyi (tech) or union wage sheets (trades).'},
+ {id:'jdcheck',name:'JD quality check',desc:'Unicorn asks, unclear titles, missing pay, biased wording',local:true,prompt:'Review this job description as an expert US recruiter and employment-law-aware editor. Flag: unicorn requirement lists, unclear or novelty titles, missing or vague pay range, degree requirements that could be dropped, year-count requirements that are too high, age-coded words (digital native, recent grad, max X years, young, energetic), gendered or masculine-coded words (rockstar, ninja, manpower, aggressive), exclusionary requirements (citizenship, native speaker, able-bodied), and anything that asks for salary history. For each flag: quote the phrase, say why it hurts, and give a replacement line. End with a rewritten "Requirements" section.'}
+];
+function renderToolList(){ $('#toolList').innerHTML=TOOLS.map(t=>`<button type="button" class="tool" data-tool="${t.id}" aria-pressed="false"><b>${h(t.name)}</b><span>${h(t.desc)}</span></button>`).join(''); }
+function renderKitCtx(){ const m=model(); $('#kitCtx').innerHTML=(m.titles.length||m.skills.length)?h(ctxText().split('\nJob description')[0]).replace(/\n/g,'<br>'):'Nothing on the Build tab yet. Load the example JD or add terms first.'; $('#kitAvail').textContent=sample?'':'AI tools are not available in this view; the JD quality check still runs locally.'; }
+$('#toolList').addEventListener('click',e=>{ const b=e.target.closest('[data-tool]'); if(!b) return; runTool(TOOLS.find(t=>t.id===b.dataset.tool)); });
+async function runTool(t){ $$('.tool').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t.id))); $('#kitTitle').textContent=t.name; const note=$('#kitNote'); if(t.note){ note.textContent=t.note; note.hidden=false; } else note.hidden=true; const out=$('#kitOut'); $('#kitCopy').hidden=true; let localHTML='';
+ if(t.local){ const q=jdCheck(S.jd,S.mode); localHTML=`<div class="row" style="gap:16px;align-items:center;margin-bottom:8px"><div class="score">${q.score}</div><div class="hint">out of 100, from the rule-based check.<br>${sample?'A deeper read from Claude follows below.':''}</div></div>${q.items.map(i=>`<div class="issue"><span class="dot ${i.sev}"></span><div><b>${h(i.title)}</b><p>${h(i.detail)}</p></div></div>`).join('')}`; out.innerHTML=localHTML; if(!S.jd.trim()) return; }
+ if(!sample){ if(!t.local) out.innerHTML='<p class="empty">AI tools need the Claude runtime, which is not available in this view.</p>'; return; }
+ const m=model(); if(!m.titles.length&&!m.skills.length&&!S.jd.trim()){ out.innerHTML='<p class="empty">Add terms on the Build tab first.</p>'; return; }
+ if(kitCtl) kitCtl.abort(); kitCtl=new AbortController(); $('#kitStop').hidden=false; const prompt=`${GUARD}\n\nRole context:\n${ctxText()}\n\nTask: ${t.prompt}${t.json?' Ignore the markdown rule above: reply with raw JSON only.':''}`; out.innerHTML=localHTML+'<p class="hint"><span class="spin"></span> Thinking…</p>';
+ try{ if(t.json){ const arr=await sample.json(prompt,{signal:kitCtl.signal,cache:false}); const items=Array.isArray(arr)?arr:[]; out.innerHTML=items.length?`<p class="hint">Click Add to put a title into the Job titles chips.</p>`+items.map((x,i)=>`<div class="sugg"><p>${h(x.title)}<small>${h(x.why||'')}</small></p><button type="button" class="btn small" data-addtitle="${h(String(x.title||''))}">Add</button></div>`).join(''):'<p class="empty">No suggestions came back.</p>'; }
+  else { let text=''; const r=await sample(prompt,{signal:kitCtl.signal,cache:false,onText:({text:tx})=>{ text=tx; out.innerHTML=localHTML+(t.local?'<h4 style="margin-top:16px">Deeper read</h4>':'')+'<div class="ai-out">'+md(text)+'</div>'; }}); text=r.text; out.innerHTML=localHTML+(t.local?'<h4 style="margin-top:16px">Deeper read</h4>':'')+'<div class="ai-out">'+md(text)+'</div>'+(r.truncated?'<p class="hint">Cut short; ask for less at a time.</p>':''); out._text=text; $('#kitCopy').hidden=false; }
+ }catch(e){ if(e.code==='cancelled'){ out.innerHTML=localHTML+'<p class="hint">Stopped.</p>'+(e.text?'<div class="ai-out">'+md(e.text)+'</div>':''); } else if(e.code==='not_granted'){ out.innerHTML=localHTML+'<p class="hint">Claude access was not granted for this page, so AI tools are off. The rule-based checks still work.</p>'; } else if(e.code==='rate_limited'){ out.innerHTML=localHTML+'<p class="hint">Rate limited. Wait a minute and try again.</p>'; } else out.innerHTML=localHTML+`<p class="hint">Could not get an answer (${h(e.code||'error')}). ${h(e.message||'')}</p>`; }
+ finally{ $('#kitStop').hidden=true; } }
+$('#kitStop').addEventListener('click',()=>kitCtl&&kitCtl.abort());
+$('#kitCopy').addEventListener('click',()=>copyText($('#kitOut')._text||$('#kitOut').innerText));
+$('#kitOut').addEventListener('click',e=>{ const b=e.target.closest('[data-addtitle]'); if(!b) return; S.groups.titles.push(chip(b.dataset.addtitle)); renderTerms(); renderOutputs(); saveLocal(); b.textContent='Added'; b.disabled=true; toast('Title added'); });
+
+/* ===================== Saved searches ===================== */
+const STATUSES=['Draft','In review','Approved','Changes requested']; const stClass=s=>({'Draft':'st-draft','In review':'st-review','Approved':'st-approved','Changes requested':'st-changes'}[s]||'st-draft');
+let localSaved=[]; try{ localSaved=JSON.parse(localStorage.getItem(LS+'-saved')||'[]'); }catch(e){}
+const persistLocalSaved=()=>{ try{ localStorage.setItem(LS+'-saved',JSON.stringify(localSaved)); }catch(e){} };
+function snapshot(){ return {mode:S.mode,strict:S.strict,levels:S.levels,groups:S.groups,details:S.details,jd:S.jd.slice(0,20000)}; }
+async function writeDoc(id,data){ if(db){ if(canWrite===false){ toast('You have view-only access; saving is off'); throw new Error('ro'); } try{ await db.doc('searches/'+id).set(data); }catch(e){ if(e.code==='invalid_argument'){ canWrite=false; renderSaved(); toast('You have view-only access; saving is off'); } else toast('Save failed: '+(e.code||'')); throw e; } } else { const i=localSaved.findIndex(x=>x.id===id); const row={id,...data}; if(i>=0) localSaved[i]=row; else localSaved.unshift(row); persistLocalSaved(); S.saved=localSaved; renderSaved(); } }
+async function saveCurrent(status){ const m=model(); if(!m.titles.length&&!m.skills.length){ toast('Nothing to save yet'); return; } const existing=S.savedId&&S.saved.find(x=>x.id===S.savedId); const name=existing?existing.name:(m.primaryTitle||'Untitled')+(locLabel()?' – '+locLabel().replace(/\s\(\d+ mi\)/,''):''); const id=S.savedId||nid(); const data={name,status:status||(existing?existing.status:'Draft'),snapshot:snapshot(),comments:existing?existing.comments||[]:[],createdBy:existing?existing.createdBy:(myId||''),updatedAt:Date.now(),createdAt:existing?existing.createdAt:Date.now()}; try{ await writeDoc(id,data); S.savedId=id; saveLocal(); toast(existing?'Saved search updated':'Search saved'); $('#btnSave').textContent='Update saved search'; }catch(e){} }
+$('#btnSave2').addEventListener('click',()=>saveCurrent());
+async function loadSaved(row){ const s=row.snapshot; if(!s) return; S.mode=s.mode; document.body.dataset.mode=S.mode; $$('.modeswitch button').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.mode===S.mode))); S.strict=s.strict; S.levels=s.levels||[]; S.groups=Object.assign(freshGroups(),JSON.parse(JSON.stringify(s.groups||{}))); S.details=Object.assign(freshDetails(),JSON.parse(JSON.stringify(s.details||{}))); S.jd=s.jd||''; S.savedId=row.id; S.editing=null; renderAll(); $('#btnSave').textContent='Update saved search'; saveLocal(); setTab('build'); toast('Loaded "'+row.name+'"'); }
+let profiles={};
+async function resolveNames(ids){ if(!user||!ids.length) return; try{ const ps=await user.profiles(uniq(ids)); Object.assign(profiles,ps||{}); }catch(e){} }
+function renderSaved(){ const list=$('#savedList'); const f=$('#savedFilter').value; const rows=(S.saved||[]).filter(r=>!f||r.status===f).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)); $('#savedCount').textContent=(S.saved||[]).length; $('#savedLede').textContent=db?'Saved searches live with this page: anyone you share it with sees the same list, can comment, and can load a search into Build.'+(canWrite===false?' You have view-only access, so you can read and load but not change them.':''):'Shared saving is not available in this view, so searches are kept on this device only.';
+ if(!rows.length){ list.innerHTML='<div class="pane"><p class="empty">No saved searches'+(f?' with that status':'')+'. Build a search, then press "Save search".</p></div>'; return; }
+ const ro=canWrite===false; const fmt=ts=>ts?new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+new Date(ts).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}):''; const who=id=>profiles[id]?.name||'Someone';
+ list.innerHTML=rows.map(r=>{ const s=r.snapshot||{}; const n=Object.values(s.groups||{}).reduce((a,b)=>a+b.filter(c=>c.on).length,0); const ed=r._editing; return `<div class="saved" data-id="${r.id}"><div class="saved-top"><div class="row">${ed?`<input class="in" style="margin:0;width:260px" value="${h(r.name)}" data-rename="${r.id}" aria-label="Rename">`:`<span class="saved-name">${h(r.name)}</span>`}<span class="badge">${s.mode==='trades'?'Trades':'Tech'}</span><span class="badge">${s.strict?'Strict':'Broad'}</span><span class="hint">${n} active chips</span></div><div class="row">${ro?`<span class="status ${stClass(r.status)}">${h(r.status)}</span>`:`<select class="in status ${stClass(r.status)}" style="margin:0;width:auto;padding:3px 8px" data-status="${r.id}" aria-label="Status">${STATUSES.map(x=>`<option ${x===r.status?'selected':''}>${x}</option>`).join('')}</select>`}<button type="button" class="btn small" data-load="${r.id}">Load into Build</button>${ro?'':ed?`<button type="button" class="btn small primary" data-rename-save="${r.id}">Save name</button>`:`<button type="button" class="btn small" data-rename-start="${r.id}">Rename</button>`}${ro?'':`<button type="button" class="btn small danger" data-del="${r.id}">${r._confirm?'Confirm delete':'Delete'}</button>`}</div></div><p class="hint" style="margin:6px 0 0">${h([ (s.groups?.titles||[]).filter(c=>c.on).map(c=>c.t).join(', '), (s.groups?.core||[]).filter(c=>c.on).map(c=>c.t).join(', ') ].filter(Boolean).join(' — '))}<br>Updated ${fmt(r.updatedAt)}${r.createdBy?' by '+h(who(r.createdBy)):''}</p>
+ <div class="cmts">${(r.comments||[]).map(c=>`<div class="cmt"><span class="who">${h(who(c.by))}</span><span class="when">${fmt(c.at)}</span><div>${h(c.text)}</div></div>`).join('')}${ro?'':`<div class="row" style="margin-top:6px"><input class="in" style="margin:0;flex:1 1 220px" placeholder="Add a comment" data-cmt="${r.id}" aria-label="Comment"><button type="button" class="btn small" data-cmt-send="${r.id}">Comment</button></div>`}</div></div>`; }).join(''); }
+$('#savedFilter').addEventListener('change',renderSaved);
+$('#savedList').addEventListener('click',async e=>{ const b=e.target.closest('button'); if(!b) return; const id=b.dataset.load||b.dataset.del||b.dataset.renameStart||b.dataset.renameSave||b.dataset.cmtSend; const r=S.saved.find(x=>x.id===id); if(!r) return;
+ if(b.dataset.load) return loadSaved(r);
+ if(b.dataset.renameStart){ r._editing=true; renderSaved(); $(`[data-rename="${id}"]`)?.focus(); return; }
+ if(b.dataset.renameSave){ const v=$(`[data-rename="${id}"]`).value.trim(); r._editing=false; if(v&&v!==r.name){ const {_editing,_confirm,id:_i,...data}=r; await writeDoc(id,{...data,name:v,updatedAt:Date.now()}).catch(()=>{}); } renderSaved(); return; }
+ if(b.dataset.del){ if(!r._confirm){ r._confirm=true; renderSaved(); setTimeout(()=>{ r._confirm=false; renderSaved(); },4000); return; } if(db){ try{ await db.doc('searches/'+id).delete(); }catch(e){ toast('Delete failed'); return; } } else { localSaved=localSaved.filter(x=>x.id!==id); persistLocalSaved(); S.saved=localSaved; } if(S.savedId===id){ S.savedId=null; $('#btnSave').textContent='Save search'; } renderSaved(); toast('Deleted'); return; }
+ if(b.dataset.cmtSend){ const inp=$(`[data-cmt="${id}"]`); const v=inp.value.trim(); if(!v) return; const {_editing,_confirm,id:_i,...data}=r; const comments=[...(r.comments||[]),{by:myId||'',text:v.slice(0,2000),at:Date.now()}]; await writeDoc(id,{...data,comments,updatedAt:Date.now()}).catch(()=>{}); inp.value=''; renderSaved(); } });
+$('#savedList').addEventListener('change',async e=>{ const sel=e.target.closest('[data-status]'); if(!sel) return; const r=S.saved.find(x=>x.id===sel.dataset.status); if(!r) return; const {_editing,_confirm,id:_i,...data}=r; await writeDoc(r.id,{...data,status:sel.value,updatedAt:Date.now()}).catch(()=>{ renderSaved(); }); });
+$('#savedList').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.dataset.cmt){ e.preventDefault(); $(`[data-cmt-send="${e.target.dataset.cmt}"]`).click(); } if(e.key==='Enter'&&e.target.dataset.rename){ e.preventDefault(); $(`[data-rename-save="${e.target.dataset.rename}"]`).click(); } });
+
+/* ===================== Runtime wiring ===================== */
+async function initRuntime(){ if(!window.claude||typeof claude.use!=='function'){ S.saved=localSaved; renderSaved(); renderKitCtx(); return; }
+ const [u,d,s]=await Promise.all([claude.use('user').catch(()=>null),claude.use('db').catch(()=>null),claude.use('sample').catch(()=>null)]); user=u; db=d; sample=s;
+ if(user){ try{ myId=await user.id(); canWrite=await user.can('data.write'); }catch(e){} }
+ if(db){ db.collection('searches').orderBy('updatedAt','desc').limit(300).onSnapshot(async snap=>{ const keep=Object.fromEntries((S.saved||[]).map(r=>[r.id,r])); S.saved=snap.docs.map(d=>({id:d.id,...d.data(),_editing:keep[d.id]?._editing,_confirm:keep[d.id]?._confirm})); await resolveNames([...S.saved.map(r=>r.createdBy),...S.saved.flatMap(r=>(r.comments||[]).map(c=>c.by))].filter(Boolean)); renderSaved(); if(S.savedId&&!S.saved.some(r=>r.id===S.savedId)){ S.savedId=null; $('#btnSave').textContent='Save search'; } },err=>{ db=null; S.saved=localSaved; renderSaved(); }); } else { S.saved=localSaved; renderSaved(); }
+ renderKitCtx(); }
+
+/* ===================== Boot ===================== */
+loadLocal(); applyTheme(); document.body.dataset.mode=S.mode; $$('.modeswitch button').forEach(b=>b.setAttribute('aria-checked',String(b.dataset.mode===S.mode)));
+$$('.modeswitch button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+$('#themeBtn').addEventListener('click',()=>{ S.theme=S.theme==='system'?'light':S.theme==='light'?'dark':'system'; applyTheme(); saveLocal(); });
+$('#tablist').addEventListener('click',e=>{ const b=e.target.closest('.tab-btn'); if(b) setTab(b.dataset.tab); });
+renderAll(); if(S.savedId) $('#btnSave').textContent='Update saved search'; S.saved=localSaved; renderSaved(); renderKitCtx(); initRuntime();
+</script>
+</body>
+</html>
